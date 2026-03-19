@@ -158,13 +158,13 @@ body::after {
 .top-controls::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
 .top-controls::after  { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
 
-.suit-selector { display: flex; gap: 20px; }
+.suit-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .circle-stats-wrapper { margin-left: auto; }
 .top-right-tools { margin-left: auto; display: flex; align-items: center; gap: 18px; }
 
 /* 花色按鈕 — 純文字符號版 */
 .suit-button {
-    width: 76px; height: 76px;
+    width: 60px; height: 60px;
     border: 1px solid rgba(0, 255, 136, 0.2);
     background: var(--bg-inset);
     cursor: crosshair; padding: 0; border-radius: 4px;
@@ -218,7 +218,7 @@ body::after {
 }
 .hud-bar-row { display: flex; align-items: center; gap: 6px; }
 .hud-bar-label {
-    width: 16px; font-size: 11px; font-weight: 700;
+    width: 16px; font-size: 15px; font-weight: 700;
     font-family: var(--font-mono); text-align: center;
 }
 .hud-bar-label.hud-banker { color: var(--red-alert); }
@@ -237,7 +237,7 @@ body::after {
 .hud-player-fill { background: linear-gradient(90deg, var(--cyan), #64d8ff); box-shadow: 0 0 8px rgba(0, 200, 255, 0.5); }
 .hud-tie-fill    { background: linear-gradient(90deg, var(--phosphor), #66ffaa); box-shadow: 0 0 8px rgba(0, 255, 136, 0.5); }
 .hud-bar-value {
-    width: 22px; font-size: 11px; font-weight: 700;
+    width: 22px; font-size: 15px; font-weight: 700;
     font-family: var(--font-mono); text-align: right;
 }
 .hud-bar-value.hud-banker { color: var(--red-alert); }
@@ -249,7 +249,7 @@ body::after {
     margin-top: 2px; padding-top: 3px;
 }
 .hud-total-label {
-    font-size: 9px; color: rgba(0, 255, 136, 0.4);
+    font-size: 15px; color: rgba(0, 255, 136, 0.4);
     font-family: var(--font-mono); letter-spacing: 2px;
 }
 .hud-total-value {
@@ -298,9 +298,9 @@ body::after {
 
 /* 停止按鈕 */
 .generate-stop-btn {
-    width: 58px; height: 30px; border: 1px solid rgba(255,59,59,0.5);
+    width: 50px; height: 50px; border: 1px solid rgba(255,59,59,0.5);
     border-radius: 3px; background: rgba(255,59,59,0.1);
-    color: var(--red-alert); font-size: 12px; font-weight: 700;
+    color: var(--red-alert); font-size: 18px; font-weight: 700;
     cursor: crosshair; transition: all .15s; font-family: var(--font-mono);
     text-shadow: var(--red-glow);
 }
@@ -308,13 +308,13 @@ body::after {
 .generate-stop-btn:disabled { opacity: .3; cursor: not-allowed; }
 
 /* 回復分析輸入 */
-.recovery-check-inputs { display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px 6px; align-items: flex-end; margin: 0 8px; }
+.recovery-check-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 6px; margin: 0 8px; }
 .recovery-input-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
-.recovery-input-label { font-size: 10px; color: var(--text-dim); font-weight: 600; white-space: nowrap; font-family: var(--font-label); letter-spacing: 1px; text-transform: uppercase; }
+.recovery-input-label { font-size: 15px; color: var(--text-dim); font-weight: 600; white-space: nowrap; font-family: var(--font-label); letter-spacing: 3px; text-transform: uppercase; }
 .recovery-input {
-    width: 55px; height: 26px; padding: 2px 4px;
+    width: 70px; height: 36px; padding: 2px 4px;
     border: var(--border-dim); border-radius: 2px;
-    font-size: 12px; text-align: center;
+    font-size: 18px; text-align: center;
     background: var(--bg-inset); color: var(--phosphor);
     transition: all .2s; font-family: var(--font-mono);
 }
@@ -343,25 +343,37 @@ body::after {
 
 /* ── 牌面選擇列 ── */
 .rank-selector-row {
-    display: flex; gap: 6px; margin-bottom: 14px; padding: 10px 14px;
+    display: flex; align-items: center; gap: 6px; margin-bottom: 14px; padding: 10px 14px;
     background: var(--bg-panel); border: var(--border-dim); border-radius: 4px;
     overflow-x: auto;
     box-shadow: inset 0 0 20px rgba(0,255,136,0.03);
 }
 .rank-button {
-    flex: 0 0 auto; width: 72px; height: 102px;
-    border: none; background: transparent; cursor: crosshair; padding: 0;
-    transition: transform .3s ease, filter .2s;
-    filter: drop-shadow(0 3px 8px rgba(0,0,0,.8)) sepia(0.4) hue-rotate(80deg) saturate(0.5);
+    flex: 0 0 auto; width: 60px; height: 44px;
+    border: 1px solid rgba(0, 255, 136, 0.2); background: var(--bg-inset);
+    cursor: crosshair; padding: 0; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .25s cubic-bezier(.68, -.55, .265, 1.55);
 }
-.rank-button img { width: 100%; height: 100%; object-fit: contain; }
+.rank-value {
+    font-size: 22px; font-weight: 700; line-height: 1;
+    font-family: var(--font-mono); color: var(--phosphor-dim);
+    text-shadow: 0 0 6px rgba(0, 255, 136, 0.3);
+    transition: all .2s ease;
+}
 .rank-button:hover {
-    transform: translateY(-10px) rotate(-2deg);
-    filter: drop-shadow(0 0 14px var(--phosphor)) sepia(0.6) hue-rotate(80deg) brightness(1.1);
+    border-color: rgba(0, 255, 136, 0.5);
+    transform: translateY(-4px);
+    box-shadow: var(--phosphor-soft);
 }
-.rank-button.selected { position: relative; }
-.rank-button.selected::after { content: ''; position: absolute; inset: 0; background: url('nb/背面.png') center/contain no-repeat; z-index: 1; filter: hue-rotate(80deg); }
-.rank-button.selected img { opacity: 0; }
+.rank-button:hover .rank-value { color: var(--phosphor); }
+.rank-button.selected {
+    border-color: var(--phosphor); position: relative;
+    background: rgba(0, 255, 136, 0.12);
+    box-shadow: var(--phosphor-soft), inset 0 0 12px rgba(0, 255, 136, 0.08);
+    transform: translateY(-4px) scale(1.05);
+}
+.rank-button.selected .rank-value { color: var(--phosphor); text-shadow: 0 0 10px rgba(0, 255, 136, 0.6); }
 
 /* 違規統計 */
 .violation-stats { display: flex; gap: 10px; margin-left: auto; align-items: center; }
@@ -377,7 +389,7 @@ body::after {
 .violation-card::before { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
 .violation-card::after  { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
 .violation-card:hover { border-color: rgba(0,255,136,0.3); box-shadow: var(--phosphor-soft); }
-.violation-label { font-size: 10px; color: var(--text-dim); margin-bottom: 4px; font-weight: 600; white-space: nowrap; font-family: var(--font-label); letter-spacing: 1px; text-transform: uppercase; }
+.violation-label { font-size: 14px; color: var(--text-dim); margin-bottom: 4px; font-weight: 600; white-space: nowrap; font-family: var(--font-label); letter-spacing: 1px; text-transform: uppercase; }
 .violation-count {
     font-size: 30px; font-weight: 400; color: var(--red-alert);
     font-family: var(--font-display); line-height: 1; letter-spacing: 2px;
@@ -390,7 +402,7 @@ body::after {
     0%,100% { opacity: 1; text-shadow: var(--red-glow); }
     50%     { opacity: .6; text-shadow: 0 0 20px #ff3b3b, 0 0 40px rgba(255,59,59,0.6); }
 }
-.violation-detail { font-size: 10px; color: var(--text-dim); margin-top: 3px; line-height: 1.4; min-height: 26px; word-break: break-word; font-family: var(--font-mono); }
+.violation-detail { font-size: 14px; color: var(--text-dim); margin-top: 3px; line-height: 1.4; min-height: 26px; word-break: break-word; font-family: var(--font-mono); }
 .violation-card.no-violation .violation-detail { color: var(--text-mid); }
 .violation-card.has-violation .violation-detail { color: var(--red-alert); font-weight: 600; }
 
@@ -455,9 +467,9 @@ body::after {
 }
 .rounds-table { width: 100%; border-collapse: collapse; background: transparent; position: relative; z-index: 2; }
 .rounds-table th {
-    color: var(--phosphor); font-weight: 600; padding: 6px 4px; text-align: center;
+    color: var(--phosphor); font-weight: 400; padding: 6px 4px; text-align: center;
     border: none; border-bottom: 1px solid rgba(0,255,136,0.25);
-    letter-spacing: 3px; font-size: 14px; font-family: var(--font-label);
+    letter-spacing: 3px; font-size: 17px; font-family: var(--font-label);
     text-transform: uppercase; text-shadow: var(--phosphor-soft);
 }
 .rounds-table td {
@@ -492,9 +504,10 @@ body::after {
 
 /* 牌標籤 */
 .card-label {
-    display: inline-block; padding: 1px 5px; margin: 1px;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; margin: 0px;
     background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.12);
-    border-radius: 2px; font-size: 13px; min-width: 24px;
+    border-radius: 2px; font-size: 18px;
     color: var(--text-mid); font-family: var(--font-mono);
 }
 .card-label.s-signal-card { color: var(--red-alert); font-weight: 700; border-color: rgba(255,59,59,0.35); text-shadow: 0 0 5px rgba(255,59,59,0.5); }
@@ -543,7 +556,7 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
 .circle-segment-label { position: absolute; font-size: 11px; font-weight: 700; pointer-events: none; left: 50%; top: 50%; transform: translate(-50%,-50%); font-family: var(--font-mono); color: #fff; }
 
 /* 切牌 */
-.cut-card { background: transparent; border: none; padding: 0; display: flex; flex-direction: column; gap: 6px; align-items: center; box-shadow: none; }
+.cut-card { background: transparent; border: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: center; box-shadow: none; }
 .cut-card input {
     width: 80px; height: 34px; padding: 4px 8px;
     border: var(--border-glow); border-radius: 2px;
@@ -669,7 +682,7 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
     background: var(--bg-panel); border: var(--border-glow);
     border-radius: 4px; color: var(--text-bright);
     font-family: var(--font-mono); vertical-align: middle;
-    min-width: 550px; box-shadow: var(--phosphor-soft);
+    min-width: 350px; box-shadow: var(--phosphor-soft);
     gap: 15px; z-index: 10; position: relative;
 }
 .recovery-display .left-col { display: flex; flex-direction: column; justify-content: center; border-right: 1px solid rgba(0,255,136,0.15); padding-right: 12px; min-width: 90px; height: 100%; align-self: center; }
@@ -718,9 +731,11 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
             </div>
 
             <!-- GO 按鈕 -->
-            <button class="generate-stop-btn" id="generateBtn">生成</button>
-            <button type="button" id="stopGenerateBtn" class="generate-stop-btn" disabled
-                onclick="stopGenerateShoe()">停止</button>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                <button class="generate-stop-btn" id="generateBtn">生成</button>
+                <button type="button" id="stopGenerateBtn" class="generate-stop-btn" disabled
+                    onclick="stopGenerateShoe()">停止</button>
+            </div>
 
             <!-- 回復分析檢查條件設定 -->
             <div class="recovery-check-inputs">
@@ -728,10 +743,6 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
                     <label class="recovery-input-label">平均上限</label>
                     <input type="number" id="avgRecoveryLimit" class="recovery-input" step="0.1" min="0" value="4.5"
                         placeholder="0=關閉">
-                </div>
-                <div class="recovery-input-item">
-                    <label class="recovery-input-label">16局上限</label>
-                    <input type="number" id="range16Limit" class="recovery-input" min="0" placeholder="空白=不檢查">
                 </div>
                 <div class="recovery-input-item">
                     <label class="recovery-input-label">莊閒差距</label>
