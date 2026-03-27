@@ -305,6 +305,112 @@
         overflow: auto;
         padding: 4px;
       }
+      .fs-grid-clone {
+        --grid-cols: 16;
+        --grid-row-size: 40px;
+        --grid-row-gap: 6px;
+        --grid-col-gap: 2px;
+        --grid-row-step: calc(var(--grid-row-size) + var(--grid-row-gap));
+        --grid-row-line-thickness: var(--grid-row-gap);
+        --grid-row-odd-color: rgb(245, 188, 228);
+        --grid-row-even-color: rgba(36, 50, 251, 0.7);
+        --grid-row-band-odd: rgba(15, 23, 42, 0.35);
+        --grid-row-band-even: rgba(30, 41, 59, 0.25);
+        --grid-col-line-color: rgba(255, 255, 255, 0.16);
+        --grid-col-line-thickness: 2px;
+        display: grid;
+        grid-template-columns: repeat(var(--grid-cols), 1fr);
+        grid-auto-rows: var(--grid-row-size);
+        row-gap: var(--grid-row-gap);
+        column-gap: var(--grid-col-gap);
+        position: relative;
+        background-image: linear-gradient(
+          to bottom,
+          var(--grid-row-band-odd) 0,
+          var(--grid-row-band-odd) var(--grid-row-size),
+          transparent var(--grid-row-size),
+          transparent var(--grid-row-step),
+          var(--grid-row-band-even) var(--grid-row-step),
+          var(--grid-row-band-even)
+            calc(var(--grid-row-step) + var(--grid-row-size)),
+          transparent calc(var(--grid-row-step) + var(--grid-row-size)),
+          transparent calc(var(--grid-row-step) * 2)
+        );
+        background-size: 100% calc(var(--grid-row-step) * 2);
+        background-position: 0 0;
+      }
+      .fs-grid-clone::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 2;
+        background-image:
+          linear-gradient(
+            to bottom,
+            transparent 0,
+            transparent var(--grid-row-size),
+            var(--grid-row-odd-color) var(--grid-row-size),
+            var(--grid-row-odd-color)
+              calc(var(--grid-row-size) + var(--grid-row-line-thickness)),
+            transparent
+              calc(var(--grid-row-size) + var(--grid-row-line-thickness)),
+            transparent calc(var(--grid-row-step) * 2)
+          ),
+          linear-gradient(
+            to bottom,
+            transparent 0,
+            transparent var(--grid-row-size),
+            var(--grid-row-even-color) var(--grid-row-size),
+            var(--grid-row-even-color)
+              calc(var(--grid-row-size) + var(--grid-row-line-thickness)),
+            transparent
+              calc(var(--grid-row-size) + var(--grid-row-line-thickness)),
+            transparent calc(var(--grid-row-step) * 2)
+          );
+        background-size:
+          100% calc(var(--grid-row-step) * 2),
+          100% calc(var(--grid-row-step) * 2);
+        background-position:
+          0 0,
+          0 var(--grid-row-step);
+        background-repeat: repeat;
+      }
+      .fs-grid-clone::after {
+        --grid-col-size: calc(
+          (100% - (var(--grid-cols) - 1) * var(--grid-col-gap)) /
+            var(--grid-cols)
+        );
+        --grid-col-step: calc(var(--grid-col-size) + var(--grid-col-gap));
+        --grid-col-line-offset: calc(
+          (var(--grid-col-gap) - var(--grid-col-line-thickness)) / 2
+        );
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 1;
+        background-image: linear-gradient(
+          to right,
+          transparent 0,
+          transparent calc(var(--grid-col-size) + var(--grid-col-line-offset)),
+          var(--grid-col-line-color)
+            calc(var(--grid-col-size) + var(--grid-col-line-offset)),
+          var(--grid-col-line-color)
+            calc(
+              var(--grid-col-size) + var(--grid-col-line-offset) +
+                var(--grid-col-line-thickness)
+            ),
+          transparent
+            calc(
+              var(--grid-col-size) + var(--grid-col-line-offset) +
+                var(--grid-col-line-thickness)
+            ),
+          transparent var(--grid-col-step)
+        );
+        background-size: var(--grid-col-step) 100%;
+        background-repeat: repeat;
+      }
       .grid-cell {
         border-radius: 6px;
         background-color: rgba(240, 240, 240, 0.08);
@@ -3796,7 +3902,8 @@
         if (!srcGrid || !srcGrid.children.length) return;
         // 複製整個 grid 到全螢幕
         const clone = srcGrid.cloneNode(true);
-        clone.id = "fs-grid-clone";
+        clone.removeAttribute("id");
+        clone.classList.add("fs-grid-clone");
         fsGridWrap.innerHTML = "";
         fsGridWrap.appendChild(clone);
 
