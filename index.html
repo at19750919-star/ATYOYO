@@ -1347,12 +1347,30 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
     </script>
 
     <!-- 載入核心邏輯（這些檔案需要你自己提供） -->
-    <script src="signals.js?v=6"></script>
-    <script src="signals_ui.js?v=6"></script>
+    <script src="signals.js?v=7"></script>
+    <script src="signals_ui.js?v=7"></script>
     <script src="smart_reorder_dialog.js"></script>
     <script src="swap_preview.js"></script>
     <script src="traverse.js"></script>
     <script src="auto_fix_plugin.js?v=2"></script>
+
+    <!-- 主題切換邏輯 -->
+    <script>
+        (function(){
+            var btn = document.getElementById('themeToggle');
+            btn.addEventListener('click', function(){
+                var html = document.documentElement;
+                var isLight = html.getAttribute('data-theme') === 'light';
+                if(isLight){
+                    html.removeAttribute('data-theme');
+                    localStorage.removeItem('at-theme');
+                } else {
+                    html.setAttribute('data-theme','light');
+                    localStorage.setItem('at-theme','light');
+                }
+            });
+        })();
+    </script>
 
     <!-- 主題切換邏輯 -->
     <script>
