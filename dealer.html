@@ -1,0 +1,2324 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>百家樂發牌模擬器</title>
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+  background: #0a1628;
+  color: #e0e0e0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Header ── */
+.header {
+  background: linear-gradient(135deg, #1a2a4a 0%, #0d1b2e 100%);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid #2a4a6a;
+}
+.header h1 { font-size: 20px; color: #ffd700; letter-spacing: 2px; }
+.header .shoe-info { font-size: 14px; color: #8ab4f8; }
+
+/* ── Control Bar ── */
+.controls {
+  display: flex;
+  gap: 8px;
+  padding: 10px 24px;
+  background: #0f1f35;
+  flex-wrap: wrap;
+  align-items: center;
+  border-bottom: 1px solid #1a3050;
+}
+.controls .group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.controls .group::after {
+  content: '';
+  width: 1px;
+  height: 28px;
+  background: #2a4a6a;
+  margin: 0 6px;
+}
+.controls .group:last-child::after { display: none; }
+
+.btn {
+  padding: 5px 14px;
+  border: 1px solid #3a5a7a;
+  border-radius: 6px;
+  background: #1a2a4a;
+  color: #e0e0e0;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn:hover { background: #2a4a6a; border-color: #5a8abf; }
+.btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn.primary { background: #2d6a4f; border-color: #4a9a7a; color: #fff; }
+.btn.primary:hover { background: #3a8a6a; }
+.btn.danger { background: #8b2c2c; border-color: #b04040; }
+.btn.danger:hover { background: #a03535; }
+.btn.accent { background: #6a4c2d; border-color: #9a7a4a; color: #ffd700; }
+.btn.accent:hover { background: #8a6a3a; }
+.btn.swap-active { background: #b8860b; border-color: #ffd700; color: #fff; box-shadow: 0 0 12px rgba(255,215,0,0.6), 0 0 4px rgba(255,215,0,0.4) inset; text-shadow: 0 0 6px rgba(255,215,0,0.8); animation: swapPulse 1s ease-in-out infinite; }
+@keyframes swapPulse { 0%,100% { box-shadow: 0 0 12px rgba(255,215,0,0.6), 0 0 4px rgba(255,215,0,0.4) inset; } 50% { box-shadow: 0 0 20px rgba(255,215,0,0.9), 0 0 6px rgba(255,215,0,0.6) inset; } }
+
+input[type="file"] { display: none; }
+input[type="number"], select {
+  padding: 4px 8px;
+  border: 1px solid #3a5a7a;
+  border-radius: 4px;
+  background: #0a1628;
+  color: #e0e0e0;
+  font-size: 13px;
+}
+input[type="number"] { width: 70px; text-align: center; }
+
+/* ── Main Layout ── */
+.main {
+  display: flex;
+  gap: 12px;
+  padding: 12px 20px;
+  height: calc(100vh - 115px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── Left Column: Table + Shoe ── */
+.left-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+/* ── Baccarat Table ── */
+.bac-table {
+  background: linear-gradient(145deg, #1a3322 0%, #0f2618 100%);
+  border: 3px solid #2a5a3a;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 240px;
+  position: relative;
+}
+.bac-table::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(255,215,0,0.12);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.side-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+}
+.side-label {
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 4px;
+  padding: 3px 16px;
+}
+.side-label.player { color: #4a9af5; border-bottom: 2px solid #4a9af5; }
+.side-label.banker { color: #e04040; border-bottom: 2px solid #e04040; }
+
+.card-slots {
+  display: flex;
+  gap: 6px;
+  min-height: 125px;
+  align-items: flex-start;
+}
+
+.point-display {
+  font-size: 32px;
+  font-weight: bold;
+  min-height: 38px;
+}
+.point-display.player { color: #4a9af5; }
+.point-display.banker { color: #e04040; }
+
+/* ── Result ── */
+.result-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 90px;
+}
+.result-badge {
+  font-size: 24px;
+  font-weight: bold;
+  padding: 6px 16px;
+  border-radius: 8px;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.result-badge.show { opacity: 1; }
+.result-badge.banker-win { background: rgba(224,64,64,0.2); color: #ff6666; border: 2px solid #e04040; }
+.result-badge.player-win { background: rgba(74,154,245,0.2); color: #7abfff; border: 2px solid #4a9af5; }
+.result-badge.tie-win { background: rgba(46,139,87,0.2); color: #5ae08a; border: 2px solid #2e8b57; }
+.round-counter { font-size: 13px; color: #8ab4f8; }
+
+/* ── Playing Card ── */
+.card {
+  width: 80px;
+  height: 115px;
+  border-radius: 8px;
+  position: relative;
+  perspective: 600px;
+}
+.card-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.45s;
+}
+.card.flipped .card-inner { transform: rotateY(180deg); }
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-back {
+  background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.06) 4px, rgba(255,255,255,0.06) 8px);
+  border: 2px solid rgba(255,255,255,0.2);
+}
+.card-back.red-back { background-color: #b22222; }
+.card-back.blue-back { background-color: #1a4a8a; }
+
+.card-front {
+  background: #fff;
+  color: #333;
+  transform: rotateY(180deg);
+  border: 1px solid #ccc;
+  padding: 4px;
+}
+.card-front .center-suit { font-size: 42px; line-height: 1; }
+.card-front.red-suit { color: #cc0000; }
+.card-front.black-suit { color: #222; }
+
+.card-front .corner-tl, .card-front .corner-br {
+  position: absolute;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1.15;
+  text-align: center;
+}
+.card-front .corner-tl { top: 4px; left: 5px; }
+.card-front .corner-br { bottom: 4px; right: 5px; transform: rotate(180deg); }
+.card-front .corner-suit { font-size: 14px; }
+
+.card.dealing { animation: dealIn 0.35s ease-out; }
+@keyframes dealIn {
+  from { opacity: 0; transform: translateY(-30px) scale(0.75); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Right Column: Road + History ── */
+.right-col {
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Road Map (大路) ── */
+.road-panel {
+  background: #0f1f35;
+  border: 1px solid #1a3050;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.road-header {
+  padding: 6px 12px;
+  background: #1a2a4a;
+  font-weight: bold;
+  font-size: 13px;
+  color: #ffd700;
+}
+.road-canvas {
+  padding: 6px;
+  overflow: auto;
+  max-height: 180px;
+}
+.road-grid {
+  display: grid;
+  grid-template-rows: repeat(6, 22px);
+  grid-auto-columns: 22px;
+  grid-auto-flow: column;
+  gap: 1px;
+}
+.road-cell {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+}
+.road-cell.banker { background: #cc3333; color: #fff; }
+.road-cell.player { background: #3366cc; color: #fff; }
+.road-cell.tie { background: #2e8b57; color: #fff; }
+
+/* ── Bead Road (珠盤路) ── */
+.bead-canvas {
+  padding: 6px;
+  overflow: auto;
+  max-height: 130px;
+}
+.bead-grid {
+  display: grid;
+  grid-template-rows: repeat(6, 20px);
+  grid-auto-columns: 20px;
+  grid-auto-flow: column;
+  gap: 2px;
+}
+.bead-cell {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: bold;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.bead-cell.banker { background: #cc3333; color: #fff; }
+.bead-cell.player { background: #3366cc; color: #fff; }
+.bead-cell.tie { background: #2e8b57; color: #fff; }
+
+/* ── History Panel ── */
+.history-panel {
+  flex: 1;
+  background: #0f1f35;
+  border: 1px solid #1a3050;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.history-header {
+  padding: 6px 12px;
+  background: #1a2a4a;
+  font-weight: bold;
+  font-size: 13px;
+  color: #ffd700;
+  display: flex;
+  justify-content: space-between;
+}
+.history-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 4px;
+}
+.history-row {
+  display: flex;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: 'Consolas', monospace;
+  gap: 4px;
+}
+.history-row:nth-child(odd) { background: rgba(255,255,255,0.02); }
+.history-row .h-num { color: #888; width: 28px; text-align: right; }
+.history-row .h-cards { flex: 1; letter-spacing: 0.5px; }
+.history-row .h-result { font-weight: bold; width: 20px; text-align: center; }
+.history-row .h-result.banker { color: #e04040; }
+.history-row .h-result.player { color: #4a9af5; }
+.history-row .h-result.tie { color: #2e8b57; }
+.history-row .h-pts { color: #aaa; width: 42px; text-align: center; }
+.history-row.active { background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.25); }
+
+/* ── Shoe Strip ── */
+.shoe-strip {
+  background: #0f1f35;
+  border: 1px solid #1a3050;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.shoe-strip-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #8ab4f8;
+  margin-bottom: 4px;
+}
+.shoe-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+}
+.shoe-card-dot {
+  width: 5px;
+  height: 8px;
+  border-radius: 1px;
+  opacity: 0.7;
+}
+.shoe-card-dot.red { background: #cc4444; }
+.shoe-card-dot.blue { background: #4477cc; }
+.shoe-card-dot.used { opacity: 0.15; }
+.shoe-card-dot.cut-marker { background: #ffd700; opacity: 1; width: 3px; }
+.shoe-card-dot.start-marker { background: #00ff88; opacity: 1; width: 3px; }
+
+/* ── Swap Preview ── */
+.swap-preview {
+  display: none;
+  padding: 6px 12px;
+  background: rgba(255,215,0,0.08);
+  border: 1px solid rgba(255,215,0,0.3);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #ffd700;
+  align-items: center;
+  gap: 10px;
+}
+.swap-preview.show { display: flex; }
+.swap-preview .swap-cards {
+  font-family: 'Consolas', monospace;
+  font-size: 14px;
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: #1a2a4a;
+  border: 2px solid #3a5a7a;
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 380px;
+  color: #e0e0e0;
+}
+.modal-box h3 { color: #ffd700; margin-bottom: 16px; }
+.modal-box label { display: block; margin-bottom: 10px; font-size: 14px; }
+.modal-box .hint { font-size: 12px; color: #8ab4f8; margin-top: 6px; }
+.modal-box .modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* ── Speed ── */
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #8ab4f8;
+}
+.speed-control input[type="range"] { width: 70px; accent-color: #ffd700; }
+
+/* ── Log ── */
+.log-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 4px 24px;
+  background: #0a1020;
+  font-size: 11px;
+  color: #6a8aaa;
+  border-top: 1px solid #1a3050;
+  z-index: 10;
+}
+
+/* ── Stats Bar ── */
+.stats-bar {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.stats-bar .stat { display: flex; gap: 4px; }
+.stats-bar .stat-label { color: #888; }
+.stats-bar .stat-val { font-weight: bold; }
+.stats-bar .stat-val.b { color: #e04040; }
+.stats-bar .stat-val.p { color: #4a9af5; }
+.stats-bar .stat-val.t { color: #2e8b57; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a4a6a; border-radius: 3px; }
+
+/* ══ Practice Mode ══ */
+.practice-controls { display: none; }
+.practice-controls.show { display: flex; align-items: center; gap: 8px; }
+.practice-stats-display { font-size: 20px; color: #8ab4f8; }
+.practice-stats-display .pct { color: #ffd700; font-weight: bold; }
+.btn.practice-active { background: #2d6a4f; border-color: #4a9a7a; color: #fff; box-shadow: 0 0 8px rgba(74,200,120,0.4); }
+
+/* ── Betting Table ── */
+.betting-table-wrap {
+  display: none;
+  background: linear-gradient(145deg, #1a6040 0%, #0d4028 80%, #0a3020 100%);
+  border: 4px solid #8b6914;
+  border-radius: 16px;
+  padding: 12px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.betting-table-wrap.show { display: block; }
+.betting-table-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(255,215,0,0.12);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.bt-dealer-info {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 4px 0 8px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+}
+
+/* Side bets row */
+.bt-side-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.bt-side-cell {
+  flex: 1;
+  border: 2px solid;
+  border-radius: 6px;
+  padding: 4px 2px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: bold;
+  min-height: 40px;
+  position: relative;
+}
+.bt-side-cell .bt-label { font-size: 10px; opacity: 0.8; }
+.bt-side-cell .bt-odds { font-size: 12px; }
+.bt-ppair { border-color: #4a9af5; color: #7abfff; background: rgba(74,154,245,0.1); }
+.bt-tie { border-color: #aaa; border-style: dashed; color: #2e8b57; background: rgba(46,139,87,0.08); }
+.bt-bpair { border-color: #e04040; color: #ff8888; background: rgba(224,64,64,0.1); }
+
+/* Lucky six row */
+.bt-lucky-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.bt-lucky-cell {
+  flex: 1;
+  border: 2px solid #9a7a2a;
+  border-radius: 6px;
+  padding: 4px 2px;
+  text-align: center;
+  font-size: 10px;
+  color: #ffd700;
+  background: rgba(150,120,40,0.1);
+  min-height: 36px;
+  position: relative;
+}
+
+/* Main bet rows */
+.bt-main-row {
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 50px;
+  position: relative;
+}
+.bt-main-row .bt-row-label {
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  width: 90px;
+  text-align: center;
+}
+.bt-main-row .bt-seats {
+  display: flex;
+  flex: 1;
+  gap: 2px;
+}
+.bt-banker-row { background: rgba(0,80,120,0.4); border: 2px solid #1a6080; }
+.bt-banker-row .bt-row-label { color: #e04040; }
+.bt-player-row { background: rgba(120,20,20,0.3); border: 2px solid #8a2020; }
+.bt-player-row .bt-row-label { color: #4a9af5; }
+
+/* Seat cells in main rows */
+.bt-seat-cell {
+  flex: 1;
+  min-height: 36px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  position: relative;
+}
+.bt-seat-cell .seat-num {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  font-size: 8px;
+  color: rgba(255,255,255,0.3);
+}
+
+/* Seat indicators */
+.bt-seats-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 0 2px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+}
+.bt-seat-indicator {
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+.bt-seat-indicator.active { border-color: #ffd700; color: #ffd700; }
+
+/* ── Chips ── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.chip-round {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 3px solid;
+}
+.chip-square {
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  border: 3px solid;
+}
+/* Cash chips = 黑底實線 */
+.chip-cash { border-style: solid; }
+.chip-cash.chip-500 { background: #1a1a1a; border-color: #9b59b6; color: #9b59b6; }
+.chip-cash.chip-1000 { background: #1a1a1a; border-color: #f1c40f; color: #f1c40f; }
+.chip-cash.chip-10000 { background: #555; border-color: #e04040; color: #e04040; }
+.chip-cash.chip-100000 { background: #1a1a1a; border-color: #e04040; color: #e04040; }
+/* Rolling chips = 白底虛線 */
+.chip-rolling { border-style: dashed; }
+.chip-rolling.chip-1000 { background: #fff; border-color: #f1c40f; color: #b8960b; }
+.chip-rolling.chip-10000 { background: #fff; border-color: #e04040; color: #cc2020; }
+.chip-rolling.chip-100000 { background: #fff; border-color: #e04040; color: #cc2020; }
+
+.chip-stack {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: #eee;
+}
+.chip-stack .chip-mult { font-size: 16px; font-weight: bold; color: #ffd700; }
+
+/* Side bet chip containers */
+.bt-side-cell .chip-area,
+.bt-lucky-cell .chip-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+/* ── Settlement Panel ── */
+.settlement-panel {
+  display: none;
+  background: #0f1f35;
+  border: 2px solid #3a5a7a;
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 8px;
+}
+.settlement-panel.show { display: block; }
+.settlement-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #ffd700;
+}
+.settlement-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 20px;
+}
+.settlement-table th {
+  padding: 6px 8px;
+  background: #1a2a4a;
+  color: #8ab4f8;
+  text-align: center;
+  font-size: 20px;
+}
+.settlement-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #1a3050;
+  text-align: center;
+  vertical-align: middle;
+}
+.settlement-table tr.return-row { opacity: 0.4; }
+.settlement-table tr.correct td { background: rgba(46,139,87,0.15); }
+.settlement-table tr.wrong td { background: rgba(220,50,50,0.15); }
+.settlement-table tr.active-row td { background: rgba(138,180,248,0.12); }
+.stl-action-btns { display: flex; gap: 4px; justify-content: center; }
+.stl-btn {
+  padding: 5px 14px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #1a2a4a;
+  color: #aaa;
+  font-size: 20px;
+  cursor: pointer;
+}
+.stl-btn.selected-collect { background: #8b2c2c; border-color: #e04040; color: #fff; }
+.stl-btn.selected-pay { background: #2d6a4f; border-color: #4a9a7a; color: #fff; }
+.stl-btn:hover { border-color: #8ab4f8; }
+.stl-amount {
+  font-size: 20px;
+  font-weight: bold;
+  color: #ffd700;
+  min-width: 60px;
+  display: inline-block;
+}
+.stl-amount.empty { color: #555; }
+.stl-correct-answer { color: #4a9; font-size: 20px; }
+.stl-wrong-answer { color: #e04040; font-size: 20px; font-weight: bold; }
+.settlement-footer {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.stl-bet-info { font-size: 20px; color: #888; }
+/* Chip pad for settlement input */
+.chip-pad {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 6px;
+  flex-wrap: wrap;
+}
+.chip-pad-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 3px solid #ffd700;
+  background: #1a2a4a;
+  color: #ffd700;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.chip-pad-btn:hover { transform: scale(1.1); box-shadow: 0 0 8px rgba(255,215,0,0.5); }
+.chip-pad-btn:active { transform: scale(0.95); }
+.chip-pad-btn.cp-50 { border-color: #aaa; color: #aaa; }
+.chip-pad-btn.cp-500 { border-color: #a855f7; color: #a855f7; }
+.chip-pad-btn.cp-1000 { border-color: #eab308; color: #eab308; }
+.chip-pad-btn.cp-10000 { border-color: #ef4444; color: #ef4444; }
+.chip-pad-btn.cp-100000 { border-color: #ef4444; color: #ef4444; border-radius: 6px; }
+.chip-pad-clear {
+  padding: 8px 20px;
+  border: 2px solid #e04040;
+  border-radius: 8px;
+  background: #3a1a1a;
+  color: #e04040;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.chip-pad-clear:hover { background: #5a2020; }
+.chip-pad-label {
+  font-size: 20px;
+  color: #8ab4f8;
+  margin-right: 4px;
+}
+.stl-bet-type { font-weight: bold; }
+.stl-bet-type.banker { color: #e04040; }
+.stl-bet-type.player { color: #4a9af5; }
+.stl-bet-type.tie { color: #2e8b57; }
+.stl-bet-type.ppair { color: #7abfff; }
+.stl-bet-type.bpair { color: #ff8888; }
+.stl-bet-type.lucky6 { color: #ffd700; }
+
+/* Compact dealing area in practice mode */
+.bac-table.compact {
+  min-height: 180px;
+  padding: 12px;
+  gap: 20px;
+}
+.bac-table.compact .card { width: 60px; height: 88px; }
+.bac-table.compact .card-front .corner-tl, .bac-table.compact .card-front .corner-br { font-size: 12px; }
+.bac-table.compact .card-front .corner-suit { font-size: 10px; }
+.bac-table.compact .card-front .center-suit { font-size: 30px; }
+.bac-table.compact .card-slots { min-height: 95px; }
+.bac-table.compact .point-display { font-size: 24px; min-height: 28px; }
+.bac-table.compact .side-label { font-size: 13px; }
+.bac-table.compact .side-zone { min-width: 170px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>百家樂發牌模擬器</h1>
+  <div class="shoe-info" id="shoeInfo">尚未載入牌靴</div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <div class="group">
+    <button class="btn primary" id="btnRandom">隨機生成</button>
+    <button class="btn" id="btnImport">匯入 Excel</button>
+    <button class="btn" id="btnDrive">雲端匯入</button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+  </div>
+  <div class="group">
+    <button class="btn accent" id="btnCut" disabled>切牌</button>
+  </div>
+  <div class="group">
+    <button class="btn primary" id="btnDealOne" disabled title="空白鍵">發一張</button>
+    <button class="btn primary" id="btnDealRound" disabled title="R鍵">發完本局</button>
+    <button class="btn" id="btnRunAll" disabled>一次跑完</button>
+  </div>
+  <div class="group">
+    <button class="btn accent" id="btnSwap" disabled title="S鍵：對調下兩張的發牌順序">跳張發</button>
+    <span class="swap-preview" id="swapPreview">
+      <span>下兩張：</span>
+      <span class="swap-cards" id="swapCards"></span>
+    </span>
+  </div>
+  <div class="group">
+    <button class="btn danger" id="btnReset" disabled>重置</button>
+    <div class="speed-control">
+      <span>速度</span>
+      <input type="range" id="speedSlider" min="1" max="10" value="6">
+      <span id="speedLabel">6</span>
+    </div>
+  </div>
+  <div class="group">
+    <button class="btn accent" id="btnPractice">練習模式</button>
+    <div class="practice-controls" id="practiceControls">
+      <select id="seatCount" style="padding:4px;background:#0a1628;color:#e0e0e0;border:1px solid #3a5a7a;border-radius:4px;font-size:20px;">
+        <option value="3">3 位客人</option>
+        <option value="1">1 位</option>
+        <option value="2">2 位</option>
+        <option value="5">5 位</option>
+        <option value="7">7 位</option>
+      </select>
+      <span class="practice-stats-display" id="practiceStatsDisplay">
+        正確率: <span class="pct" id="pctDisplay">--</span>
+        (<span id="correctCount">0</span>/<span id="totalOpsCount">0</span>)
+      </span>
+      <button class="btn" id="btnResetStats" style="font-size:20px;padding:5px 12px;">重置統計</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="left-col">
+    <!-- Table -->
+    <div class="bac-table">
+      <div class="side-zone">
+        <div class="side-label player">閒 PLAYER</div>
+        <div class="card-slots" id="playerCards"></div>
+        <div class="point-display player" id="playerPoint"></div>
+      </div>
+      <div class="result-zone">
+        <div class="result-badge" id="resultBadge"></div>
+        <div class="round-counter" id="roundCounter"></div>
+      </div>
+      <div class="side-zone">
+        <div class="side-label banker">莊 BANKER</div>
+        <div class="card-slots" id="bankerCards"></div>
+        <div class="point-display banker" id="bankerPoint"></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="statsBar">
+      <div class="stat"><span class="stat-label">莊</span><span class="stat-val b" id="statB">0</span></div>
+      <div class="stat"><span class="stat-label">閒</span><span class="stat-val p" id="statP">0</span></div>
+      <div class="stat"><span class="stat-label">和</span><span class="stat-val t" id="statT">0</span></div>
+      <div class="stat"><span class="stat-label">共</span><span class="stat-val" id="statTotal">0</span></div>
+    </div>
+
+    <!-- Betting Table (practice mode) -->
+    <div class="betting-table-wrap" id="bettingTable">
+      <div class="bt-dealer-info">▼ 荷官 DEALER ▼</div>
+
+      <!-- Side bets: P.PAIR / TIE / B.PAIR -->
+      <div class="bt-side-row">
+        <div class="bt-side-cell bt-ppair" data-bet="ppair">
+          <div class="bt-label">P.PAIR 閒對</div>
+          <div class="bt-odds">11 : 1</div>
+          <div class="chip-area" id="chips-ppair"></div>
+        </div>
+        <div class="bt-side-cell bt-tie" data-bet="tie">
+          <div class="bt-label">TIE 和</div>
+          <div class="bt-odds">8 : 1</div>
+          <div class="chip-area" id="chips-tie"></div>
+        </div>
+        <div class="bt-side-cell bt-bpair" data-bet="bpair">
+          <div class="bt-label">B.PAIR 莊對</div>
+          <div class="bt-odds">11 : 1</div>
+          <div class="chip-area" id="chips-bpair"></div>
+        </div>
+      </div>
+
+      <!-- Lucky Six row -->
+      <div class="bt-lucky-row">
+        <div class="bt-lucky-cell" data-bet="lucky6-2">
+          <div>兩張牌幸運六</div>
+          <div class="bt-odds">22 : 1</div>
+          <div class="chip-area" id="chips-lucky6-2"></div>
+        </div>
+        <div class="bt-lucky-cell" data-bet="lucky6-mix">
+          <div>混和幸運六</div>
+          <div class="bt-odds">12:1 / 20:1</div>
+          <div class="chip-area" id="chips-lucky6-mix"></div>
+        </div>
+        <div class="bt-lucky-cell" data-bet="lucky6-3">
+          <div>三張牌幸運六</div>
+          <div class="bt-odds">50 : 1</div>
+          <div class="chip-area" id="chips-lucky6-3"></div>
+        </div>
+      </div>
+
+      <!-- BANKER row -->
+      <div class="bt-main-row bt-banker-row">
+        <div class="bt-row-label">莊 BANKER</div>
+        <div class="bt-seats" id="bankerSeats"></div>
+      </div>
+
+      <!-- PLAYER row -->
+      <div class="bt-main-row bt-player-row">
+        <div class="bt-row-label">閒 PLAYER</div>
+        <div class="bt-seats" id="playerSeats"></div>
+      </div>
+
+      <!-- Seat indicators -->
+      <div class="bt-seats-row" id="seatIndicators">
+        ▲ 客人側 PLAYERS ▲
+      </div>
+    </div>
+
+    <!-- Settlement Panel (practice mode) -->
+    <div class="settlement-panel" id="settlementPanel">
+      <div class="settlement-header">
+        <span>結算操作</span>
+        <span id="settlementResult" style="font-size:20px;"></span>
+      </div>
+      <table class="settlement-table">
+        <thead>
+          <tr>
+            <th>座位</th>
+            <th>下注</th>
+            <th>籌碼</th>
+            <th>操作</th>
+            <th>金額</th>
+            <th>結果</th>
+          </tr>
+        </thead>
+        <tbody id="settlementBody"></tbody>
+      </table>
+      <div class="chip-pad" id="chipPad">
+        <span class="chip-pad-label">點擊籌碼輸入金額：</span>
+        <button class="chip-pad-btn cp-50" data-val="50">50</button>
+        <button class="chip-pad-btn cp-500" data-val="500">500</button>
+        <button class="chip-pad-btn cp-1000" data-val="1000">1K</button>
+        <button class="chip-pad-btn cp-10000" data-val="10000">1萬</button>
+        <button class="chip-pad-btn cp-100000" data-val="100000">10萬</button>
+        <button class="chip-pad-clear" id="btnChipClear">清除</button>
+      </div>
+      <div class="settlement-footer">
+        <button class="btn primary" id="btnConfirmSettle" style="padding:8px 28px;font-size:20px;">確認全部 (Enter)</button>
+        <button class="btn" id="btnSkipSettle" style="padding:6px 16px;font-size:20px;">跳過</button>
+      </div>
+    </div>
+
+    <!-- Shoe Strip -->
+    <div class="shoe-strip">
+      <div class="shoe-strip-header">
+        <span>牌靴進度</span>
+        <span id="shoeProgress">0 / 0</span>
+      </div>
+      <div class="shoe-cards" id="shoeCards"></div>
+    </div>
+  </div>
+
+  <!-- Right Column -->
+  <div class="right-col">
+    <!-- Big Road -->
+    <div class="road-panel">
+      <div class="road-header">大路</div>
+      <div class="road-canvas">
+        <div class="road-grid" id="bigRoad"></div>
+      </div>
+    </div>
+
+    <!-- Bead Road -->
+    <div class="road-panel">
+      <div class="road-header">珠盤路</div>
+      <div class="bead-canvas">
+        <div class="bead-grid" id="beadRoad"></div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="history-panel">
+      <div class="history-header">
+        <span>發牌記錄</span>
+        <span id="historyCount">0 局</span>
+      </div>
+      <div class="history-body" id="historyBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Log -->
+<div class="log-bar" id="logBar">就緒 — 空白鍵=發一張, R=發完本局, S=跳張發</div>
+
+<!-- Cut Modal -->
+<div class="modal-overlay" id="cutModal">
+  <div class="modal-box">
+    <h3>切牌設定</h3>
+    <label>
+      從第幾張開始發牌：
+      <input type="number" id="cutStartPos" value="1" min="1" max="416" style="margin-left:8px">
+    </label>
+    <div class="hint">設為 1 = 從第一張開始（不跳牌）。設為 17 = 跳過前 16 張，從第 17 張開始發。</div>
+    <label style="margin-top:12px">
+      切牌位置（從靴尾算起幾張停止）：
+      <input type="number" id="cutEndPos" value="0" min="0" max="80" style="margin-left:8px">
+    </label>
+    <div class="hint">設為 0 = 發到最後一張。設為 16 = 最後 16 張不發。</div>
+    <label style="margin-top:12px">
+      <input type="checkbox" id="cutBurn" style="margin-right:6px">
+      燒牌（翻第一張，依點數燒對應張數）
+    </label>
+    <div class="modal-actions">
+      <button class="btn" id="cutCancel">取消</button>
+      <button class="btn primary" id="cutConfirm">確認切牌</button>
+    </div>
+  </div>
+</div>
+
+<!-- ExcelJS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// 百家樂發牌模擬器
+// ════════════════════════════════════════════════════════════════
+
+// ── Card ──
+class DCard {
+  constructor(rank, suit, backColor) {
+    this.rank = rank;
+    this.suit = suit;
+    this.backColor = backColor || 'R';
+  }
+  point() {
+    const v = {A:1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':0,J:0,Q:0,K:0};
+    return v[this.rank] ?? 0;
+  }
+  label() {
+    const face = this.rank === '10' ? 'T' : this.rank;
+    return `${face}${this.suit}`;
+  }
+  isRedSuit() { return this.suit === '♥' || this.suit === '♦'; }
+}
+
+// ── State ──
+let shoe = [];
+let shoeIndex = 0;
+let cutEndPos = -1;       // stop dealing when shoeIndex reaches this
+let isCut = false;
+let isRunning = false;
+let swapNextTwo = false;  // 跳張發 flag
+let roundHistory = [];
+let dealPhase = 'idle';   // idle | dealing | done | shoeEnd
+let roundState = null;
+let burnedCards = [];
+let shoeFileName = '';  // 匯入的檔名
+
+const $ = id => document.getElementById(id);
+
+// ── Utilities ──
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+function getSpeed() {
+  const v = parseInt($('speedSlider').value);
+  return Math.round(700 - (v - 1) * 72);
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function log(msg) { $('logBar').textContent = msg; }
+
+// ── Build Deck ──
+function buildRandomDeck() {
+  const suits = ['♠','♥','♦','♣'];
+  const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const deck = [];
+  for (let d = 0; d < 4; d++) {
+    for (const s of suits)
+      for (const r of ranks)
+        deck.push(new DCard(r, s, 'R'));
+  }
+  for (let d = 0; d < 4; d++) {
+    for (const s of suits)
+      for (const r of ranks)
+        deck.push(new DCard(r, s, 'B'));
+  }
+  shuffle(deck);
+  return deck;
+}
+
+// ── Import Excel (不洗牌，照原序) ──
+async function importFromExcel(file) {
+  if (typeof ExcelJS === 'undefined') { log('ExcelJS 尚未載入'); return null; }
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await file.arrayBuffer());
+  const ws = wb.getWorksheet('原始數據');
+  if (!ws) { log('找不到「原始數據」工作表'); return null; }
+  const deck = [];
+  ws.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const colorSeq = (row.getCell(3).value || '').toString();
+    for (let i = 0; i < 6; i++) {
+      const val = row.getCell(4 + i).value;
+      if (!val || val.toString().trim() === '') continue;
+      let label = val.toString().trim();
+      const suit = label.slice(-1);
+      let rank = label.slice(0, -1);
+      if (rank === '0') rank = '10';
+      if (rank === 'T') rank = '10';
+      if (rank === '1') rank = 'A';
+      const bc = colorSeq[i] || '';
+      deck.push(new DCard(rank, suit, bc || 'R'));
+    }
+  });
+  return deck;
+}
+
+// ── Init Shoe ──
+function initShoe(deck) {
+  shoe = deck;
+  shoeIndex = 0;
+  cutEndPos = -1;
+  isCut = false;
+  swapNextTwo = false;
+  roundHistory = [];
+  roundState = null;
+  dealPhase = 'idle';
+  burnedCards = [];
+  updateShoeInfo();
+  renderShoeStrip();
+  clearTable();
+  clearHistory();
+  clearRoads();
+  updateStats();
+  updateButtons();
+  updateSwapPreview();
+}
+
+// ── UI Updates ──
+function updateShoeInfo() {
+  const endAt = cutEndPos > 0 ? cutEndPos : shoe.length;
+  const remaining = Math.max(0, endAt - shoeIndex);
+  let txt = '';
+  if (shoeFileName) txt += `${shoeFileName} | `;
+  txt += `牌靴: ${shoe.length} 張`;
+  if (isCut) txt += ` | 發牌區: ${shoeIndex}~${endAt} | 剩餘: ${remaining}`;
+  if (burnedCards.length) txt += ` | 已燒: ${burnedCards.length}`;
+  $('shoeInfo').textContent = txt;
+}
+
+function updateButtons() {
+  const hasShoe = shoe.length > 0;
+  const endAt = cutEndPos > 0 ? cutEndPos : shoe.length;
+  const hasCards = (endAt - shoeIndex) >= 4;
+  const settling = dealPhase === 'settlement';
+  const canDeal = hasShoe && isCut && hasCards && !isRunning && dealPhase !== 'shoeEnd' && !settling;
+
+  $('btnCut').disabled = !hasShoe || isCut;
+  $('btnDealOne').disabled = !canDeal;
+  $('btnDealRound').disabled = !canDeal;
+  $('btnRunAll').disabled = !canDeal || practiceMode;
+  $('btnSwap').disabled = !canDeal;
+  $('btnReset').disabled = !hasShoe || isRunning || settling;
+  $('shoeProgress').textContent = `${shoeIndex} / ${cutEndPos > 0 ? cutEndPos : shoe.length}`;
+}
+
+function updateStats() {
+  let b = 0, p = 0, t = 0;
+  roundHistory.forEach(r => {
+    if (r.result === '莊') b++;
+    else if (r.result === '閒') p++;
+    else t++;
+  });
+  $('statB').textContent = b;
+  $('statP').textContent = p;
+  $('statT').textContent = t;
+  $('statTotal').textContent = roundHistory.length;
+}
+
+// ── Shoe Strip ──
+function renderShoeStrip() {
+  const c = $('shoeCards');
+  c.innerHTML = '';
+  const endAt = cutEndPos > 0 ? cutEndPos : shoe.length;
+  for (let i = 0; i < shoe.length; i++) {
+    if (i === shoeIndex && i > 0) {
+      const m = document.createElement('div');
+      m.className = 'shoe-card-dot start-marker';
+      m.title = '目前位置';
+      c.appendChild(m);
+    }
+    if (cutEndPos > 0 && i === cutEndPos) {
+      const m = document.createElement('div');
+      m.className = 'shoe-card-dot cut-marker';
+      m.title = '切牌位置';
+      c.appendChild(m);
+    }
+    const dot = document.createElement('div');
+    dot.className = 'shoe-card-dot ' + (shoe[i].backColor === 'R' ? 'red' : 'blue');
+    if (i < shoeIndex || i >= endAt) dot.classList.add('used');
+    c.appendChild(dot);
+  }
+}
+
+// ── Card Element ──
+function createCardEl(card, faceDown) {
+  const el = document.createElement('div');
+  el.className = 'card dealing';
+  if (!faceDown) el.classList.add('flipped');
+  const inner = document.createElement('div');
+  inner.className = 'card-inner';
+  const back = document.createElement('div');
+  back.className = `card-face card-back ${card.backColor === 'R' ? 'red-back' : 'blue-back'}`;
+  inner.appendChild(back);
+  const front = document.createElement('div');
+  front.className = `card-face card-front ${card.isRedSuit() ? 'red-suit' : 'black-suit'}`;
+  const rk = card.rank;
+  front.innerHTML = `<div class="corner-tl"><div>${rk}</div><div class="corner-suit">${card.suit}</div></div>
+    <div class="center-suit">${card.suit}</div>
+    <div class="corner-br"><div>${rk}</div><div class="corner-suit">${card.suit}</div></div>`;
+  inner.appendChild(front);
+  el.appendChild(inner);
+  return el;
+}
+
+function flipCard(el) { el.classList.add('flipped'); }
+
+// ── Table ──
+function clearTable() {
+  $('playerCards').innerHTML = '';
+  $('bankerCards').innerHTML = '';
+  $('playerPoint').textContent = '';
+  $('bankerPoint').textContent = '';
+  const b = $('resultBadge');
+  b.className = 'result-badge';
+  b.textContent = '';
+  $('roundCounter').textContent = roundHistory.length > 0 ? `第 ${roundHistory.length} 局` : '';
+}
+
+// ── Baccarat Logic ──
+function calcPt(cards) { return cards.reduce((s, c) => s + c.point(), 0) % 10; }
+function shouldPlayerDraw(pt) { return pt <= 5; }
+function shouldBankerDraw(bt, p3card) {
+  if (bt <= 2) return true;
+  if (!p3card) return bt <= 5;
+  const p3 = p3card.point();
+  if (bt === 3) return p3 !== 8;
+  if (bt === 4) return p3 >= 2 && p3 <= 7;
+  if (bt === 5) return p3 >= 4 && p3 <= 7;
+  if (bt === 6) return p3 >= 6 && p3 <= 7;
+  return false;
+}
+
+// ── Draw from Shoe (with swap support) ──
+function drawCard() {
+  const endAt = cutEndPos > 0 ? cutEndPos : shoe.length;
+  if (shoeIndex >= endAt) return null;
+
+  // 跳張發：對調下兩張
+  if (swapNextTwo && shoeIndex + 1 < endAt) {
+    [shoe[shoeIndex], shoe[shoeIndex + 1]] = [shoe[shoeIndex + 1], shoe[shoeIndex]];
+    swapNextTwo = false;
+    $('btnSwap').classList.remove('swap-active');
+    updateSwapPreview();
+  }
+
+  return shoe[shoeIndex++];
+}
+
+// ── Swap Preview ──
+function updateSwapPreview() {
+  const endAt = cutEndPos > 0 ? cutEndPos : shoe.length;
+  const preview = $('swapPreview');
+  if (shoeIndex < endAt - 1 && isCut) {
+    const c1 = shoe[shoeIndex];
+    const c2 = shoe[shoeIndex + 1];
+    $('swapCards').textContent = `${c1.label()} → ${c2.label()}`;
+    preview.classList.add('show');
+  } else {
+    preview.classList.remove('show');
+  }
+
+  if (swapNextTwo) {
+    $('btnSwap').classList.add('swap-active');
+  } else {
+    $('btnSwap').classList.remove('swap-active');
+  }
+}
+
+// ── Round State Machine ──
+function initRound() {
+  clearTable();
+  roundState = { cards: [], phase: 'p1', pCards: [], bCards: [], pDrew: false };
+  dealPhase = 'dealing';
+  $('roundCounter').textContent = `第 ${roundHistory.length + 1} 局`;
+  if (practiceMode) generateBets();
+}
+
+function dealNext() {
+  if (!roundState || roundState.phase === 'done') return false;
+  if (dealPhase === 'idle' || dealPhase === 'done') initRound();
+
+  const card = drawCard();
+  if (!card) { finishShoe(); return false; }
+
+  roundState.cards.push(card);
+  const el = createCardEl(card, true);
+  setTimeout(() => flipCard(el), 180);
+
+  const ph = roundState.phase;
+
+  if (ph === 'p1') {
+    $('playerCards').appendChild(el);
+    roundState.pCards.push(card);
+    roundState.phase = 'b1';
+  } else if (ph === 'b1') {
+    $('bankerCards').appendChild(el);
+    roundState.bCards.push(card);
+    roundState.phase = 'p2';
+  } else if (ph === 'p2') {
+    $('playerCards').appendChild(el);
+    roundState.pCards.push(card);
+    roundState.phase = 'b2';
+  } else if (ph === 'b2') {
+    $('bankerCards').appendChild(el);
+    roundState.bCards.push(card);
+    const pT = calcPt(roundState.pCards);
+    const bT = calcPt(roundState.bCards);
+    if (pT >= 8 || bT >= 8) {
+      roundState.phase = 'done';
+    } else if (shouldPlayerDraw(pT)) {
+      roundState.phase = 'p3';
+    } else if (shouldBankerDraw(bT, null)) {
+      roundState.phase = 'b3';
+    } else {
+      roundState.phase = 'done';
+    }
+  } else if (ph === 'p3') {
+    $('playerCards').appendChild(el);
+    roundState.pCards.push(card);
+    roundState.pDrew = true;
+    const bT = calcPt(roundState.bCards);
+    if (shouldBankerDraw(bT, card)) {
+      roundState.phase = 'b3';
+    } else {
+      roundState.phase = 'done';
+    }
+  } else if (ph === 'b3') {
+    $('bankerCards').appendChild(el);
+    roundState.bCards.push(card);
+    roundState.phase = 'done';
+  }
+
+  updatePtDisplay();
+  updateSwapPreview();
+
+  if (roundState.phase === 'done') {
+    setTimeout(() => finishRound(), 300);
+  }
+
+  renderShoeStrip();
+  updateShoeInfo();
+  return true;
+}
+
+function updatePtDisplay() {
+  if (!roundState) return;
+  $('playerPoint').textContent = roundState.pCards.length >= 2 ? calcPt(roundState.pCards) : '';
+  $('bankerPoint').textContent = roundState.bCards.length >= 2 ? calcPt(roundState.bCards) : '';
+}
+
+function finishRound() {
+  if (!roundState) return;
+  const pT = calcPt(roundState.pCards);
+  const bT = calcPt(roundState.bCards);
+  const res = pT === bT ? '和' : (pT > bT ? '閒' : '莊');
+
+  const badge = $('resultBadge');
+  badge.textContent = res;
+  badge.className = 'result-badge show ' +
+    (res === '莊' ? 'banker-win' : res === '閒' ? 'player-win' : 'tie-win');
+
+  const entry = {
+    num: roundHistory.length + 1,
+    cards: roundState.cards.slice(),
+    pPt: pT, bPt: bT, result: res,
+    cardCount: roundState.cards.length,
+  };
+  roundHistory.push(entry);
+  addHistoryRow(entry);
+  $('historyCount').textContent = `${roundHistory.length} 局`;
+
+  updateStats();
+  renderBigRoad();
+  renderBeadRoad();
+
+  // Practice mode: enter settlement
+  if (practiceMode && practiceGuests.length > 0) {
+    lastRoundState = { result: res, pPt: pT, bPt: bT,
+      pCards: roundState.pCards.slice(), bCards: roundState.bCards.slice() };
+    calcAllSettlements(res, roundState.pCards, roundState.bCards);
+    dealPhase = 'settlement';
+    roundState = null;
+    updateButtons();
+    enterSettlementPhase();
+    return;
+  }
+
+  dealPhase = 'done';
+  roundState = null;
+  updateButtons();
+
+  const endAt = cutEndPos > 0 ? cutEndPos : shoe.length;
+  if (shoeIndex >= endAt || (endAt - shoeIndex) < 4) {
+    log(`本靴結束！共 ${roundHistory.length} 局`);
+    dealPhase = 'shoeEnd';
+    updateButtons();
+  }
+}
+
+function finishShoe() {
+  log(`牌靴已發完！共 ${roundHistory.length} 局`);
+  dealPhase = 'shoeEnd';
+  updateButtons();
+}
+
+// ── Deal Full Round ──
+async function dealFullRound() {
+  if (dealPhase === 'idle' || dealPhase === 'done') {
+    const endAt = cutEndPos > 0 ? cutEndPos : shoe.length;
+    if (shoeIndex >= endAt) { log('已到底，本靴結束'); return; }
+    initRound();
+  }
+  isRunning = true;
+  updateButtons();
+  const delay = getSpeed();
+  while (roundState && roundState.phase !== 'done') {
+    dealNext();
+    await sleep(delay);
+  }
+  isRunning = false;
+  updateButtons();
+}
+
+// ── Run All ──
+async function runAll() {
+  isRunning = true;
+  updateButtons();
+  const delay = getSpeed();
+  const endAt = cutEndPos > 0 ? cutEndPos : shoe.length;
+
+  while (shoeIndex < endAt && dealPhase !== 'shoeEnd') {
+    if ((endAt - shoeIndex) < 4) break;
+    if (dealPhase === 'idle' || dealPhase === 'done') initRound();
+    while (roundState && roundState.phase !== 'done') {
+      dealNext();
+      await sleep(Math.min(delay, 80));
+    }
+    await sleep(Math.max(delay / 3, 20));
+  }
+
+  isRunning = false;
+  if (dealPhase !== 'shoeEnd') {
+    dealPhase = 'shoeEnd';
+    log(`全部發完！共 ${roundHistory.length} 局`);
+  }
+  updateButtons();
+}
+
+// ── History ──
+function clearHistory() {
+  $('historyBody').innerHTML = '';
+  $('historyCount').textContent = '0 局';
+}
+function addHistoryRow(e) {
+  const c = $('historyBody');
+  c.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
+  const row = document.createElement('div');
+  row.className = 'history-row active';
+  const rc = e.result === '莊' ? 'banker' : (e.result === '閒' ? 'player' : 'tie');
+  row.innerHTML = `<span class="h-num">${e.num}</span>
+    <span class="h-cards">${e.cards.map(c => c.label()).join(' ')}</span>
+    <span class="h-pts">${e.pPt}:${e.bPt}</span>
+    <span class="h-result ${rc}">${e.result}</span>`;
+  c.appendChild(row);
+  c.scrollTop = c.scrollHeight;
+}
+
+// ── Road Maps ──
+function clearRoads() {
+  $('bigRoad').innerHTML = '';
+  $('beadRoad').innerHTML = '';
+}
+
+// Big Road (大路)
+function renderBigRoad() {
+  const grid = $('bigRoad');
+  grid.innerHTML = '';
+
+  // Build columns: same result = go down (max 6), change = new column
+  const cols = [];
+  let curCol = [];
+  let lastResult = '';
+
+  for (const r of roundHistory) {
+    const res = r.result === '和' ? lastResult : r.result; // tie follows previous column
+    if (r.result === '和') {
+      // Tie: mark on current position
+      if (curCol.length > 0) {
+        curCol[curCol.length - 1].ties = (curCol[curCol.length - 1].ties || 0) + 1;
+      }
+      continue;
+    }
+    if (res !== lastResult && curCol.length > 0) {
+      cols.push(curCol);
+      curCol = [];
+    }
+    curCol.push({ result: res, ties: 0 });
+    lastResult = res;
+  }
+  if (curCol.length > 0) cols.push(curCol);
+
+  // Render grid
+  // Handle dragon tail: if column > 6, shift right
+  let colOffset = 0;
+  for (const col of cols) {
+    let rowStart = 0;
+    for (let i = 0; i < col.length; i++) {
+      let row, gridCol;
+      if (i < 6) {
+        row = i + 1;
+        gridCol = colOffset + 1;
+      } else {
+        // Dragon tail: continue right
+        row = 6;
+        gridCol = colOffset + 1 + (i - 5);
+      }
+      const cell = document.createElement('div');
+      cell.className = `road-cell ${col[i].result === '莊' ? 'banker' : 'player'}`;
+      cell.textContent = col[i].result === '莊' ? '莊' : '閒';
+      cell.style.gridRow = row;
+      cell.style.gridColumn = gridCol;
+      if (col[i].ties > 0) {
+        cell.style.border = `2px solid #2e8b57`;
+        cell.title = `和 ×${col[i].ties}`;
+      }
+      grid.appendChild(cell);
+    }
+    const maxColUsed = col.length > 6 ? (col.length - 5) : 0;
+    colOffset += 1 + maxColUsed;
+  }
+
+  // Auto scroll to end
+  grid.parentElement.scrollLeft = grid.parentElement.scrollWidth;
+}
+
+// Bead Road (珠盤路)
+function renderBeadRoad() {
+  const grid = $('beadRoad');
+  grid.innerHTML = '';
+  for (let i = 0; i < roundHistory.length; i++) {
+    const r = roundHistory[i];
+    const cell = document.createElement('div');
+    const cls = r.result === '莊' ? 'banker' : (r.result === '閒' ? 'player' : 'tie');
+    cell.className = `bead-cell ${cls}`;
+    cell.textContent = r.result[0]; // 莊/閒/和
+    cell.title = `#${r.num} ${r.pPt}:${r.bPt}`;
+    grid.appendChild(cell);
+  }
+  grid.parentElement.scrollLeft = grid.parentElement.scrollWidth;
+}
+
+// ── Cut Card ──
+function doCut(startFrom, endFromTail, doBurn) {
+  // startFrom: 1-based, 第幾張開始發
+  // endFromTail: 從靴尾算起幾張不發
+  shoeIndex = Math.max(0, startFrom - 1);
+  cutEndPos = endFromTail > 0 ? (shoe.length - endFromTail) : shoe.length;
+  if (cutEndPos <= shoeIndex) cutEndPos = shoe.length;
+
+  isCut = true;
+  burnedCards = [];
+
+  if (doBurn && shoeIndex < cutEndPos) {
+    const first = shoe[shoeIndex++];
+    burnedCards.push(first);
+    let burnVal = first.point();
+    if (burnVal === 0) burnVal = 10; // 10/J/Q/K → 10
+    for (let i = 0; i < burnVal && shoeIndex < cutEndPos; i++) {
+      burnedCards.push(shoe[shoeIndex++]);
+    }
+    log(`切牌完成：從第 ${startFrom} 張起，翻出 ${first.label()}（${burnVal}點），燒 ${burnVal} 張，共燒 ${burnedCards.length} 張`);
+  } else {
+    log(`切牌完成：從第 ${startFrom} 張開始發牌` + (endFromTail > 0 ? `，最後 ${endFromTail} 張不發` : ''));
+  }
+
+  renderShoeStrip();
+  updateShoeInfo();
+  updateButtons();
+  updateSwapPreview();
+}
+
+// ════════════════════════════════════════════════════════════════
+// 練習模式
+// ════════════════════════════════════════════════════════════════
+
+const SEATS = [1,2,3,5,6,7,8]; // 無4號
+
+const CHIP_DEFS = {
+  cash: [
+    { value: 500,    css: 'chip-round chip-cash chip-500',   label: '500',  shape: 'round' },
+    { value: 1000,   css: 'chip-round chip-cash chip-1000',  label: '1K',   shape: 'round' },
+    { value: 10000,  css: 'chip-round chip-cash chip-10000', label: '1萬',  shape: 'round' },
+    { value: 100000, css: 'chip-square chip-cash chip-100000',label: '10萬', shape: 'square' },
+  ],
+  rolling: [
+    { value: 1000,   css: 'chip-round chip-rolling chip-1000',  label: '1K',   shape: 'round' },
+    { value: 10000,  css: 'chip-round chip-rolling chip-10000', label: '1萬',  shape: 'round' },
+    { value: 100000, css: 'chip-square chip-rolling chip-100000',label: '10萬', shape: 'square' },
+  ]
+};
+
+// 賠率表
+const PAYOUTS = {
+  '莊':       { '莊': { action: 'pay', rate: 0.95 }, '閒': { action: 'collect', rate: 1 }, '和': { action: 'return', rate: 0 } },
+  '閒':       { '莊': { action: 'collect', rate: 1 }, '閒': { action: 'pay', rate: 1 }, '和': { action: 'return', rate: 0 } },
+  '和':       { '莊': { action: 'collect', rate: 1 }, '閒': { action: 'collect', rate: 1 }, '和': { action: 'pay', rate: 8 } },
+  'ppair':    { payout: 11 },  // 閒對
+  'bpair':    { payout: 11 },  // 莊對
+  'lucky6-2': { payout: 22 },  // 兩張牌幸運六
+  'lucky6-3': { payout: 50 },  // 三張牌幸運六
+  'lucky6-mix-2': { payout: 12 },  // 混和幸運六(2張)
+  'lucky6-mix-3': { payout: 20 },  // 混和幸運六(3張)
+};
+
+let practiceMode = false;
+let practiceGuests = [];   // 當局所有下注
+let practiceStats = { totalOps: 0, errorCount: 0 };
+let lastRoundState = null; // 保存上局的牌資訊供結算用
+
+function getActiveSeats() {
+  const n = parseInt($('seatCount').value) || 3;
+  return SEATS.slice(0, n);
+}
+
+// ── Chip Rendering ──
+function renderChipHTML(chipDef, count) {
+  if (count <= 0) return '';
+  const cls = `chip ${chipDef.css}`;
+  return `<span class="chip-stack"><span class="${cls}">${chipDef.label}</span>${count > 1 ? `<span class="chip-mult">×${count}</span>` : ''}</span>`;
+}
+
+// ── Random Bet Generation ──
+function generateBets() {
+  practiceGuests = [];
+  const seats = getActiveSeats();
+  const roundResult = null; // not known yet
+
+  for (const seat of seats) {
+    // Main bet: 莊 or 閒
+    const chipType = Math.random() < 0.5 ? 'cash' : 'rolling';
+    let mainBetType = Math.random() < 0.5 ? '莊' : '閒';
+
+    // 500 泥碼只能下閒
+    const available = chipType === 'cash' ? CHIP_DEFS.cash : CHIP_DEFS.rolling;
+
+    // Pick chip denomination
+    let chipDef;
+    if (mainBetType === '莊') {
+      // 莊注只能千的倍數 → 不能用500
+      const bankerChips = available.filter(c => c.value >= 1000);
+      chipDef = bankerChips[Math.floor(Math.random() * bankerChips.length)];
+    } else {
+      chipDef = available[Math.floor(Math.random() * available.length)];
+    }
+    const count = Math.floor(Math.random() * 3) + 1; // 1~3 顆
+    const amount = chipDef.value * count;
+
+    // 莊注最終金額確認是千的倍數
+    if (mainBetType === '莊' && amount % 1000 !== 0) {
+      mainBetType = '閒'; // fallback
+    }
+
+    practiceGuests.push({
+      seat, chipType, betType: mainBetType,
+      chipDef, chipCount: count, betAmount: amount,
+      area: mainBetType === '莊' ? 'banker' : 'player'
+    });
+
+    // 30% 加和注
+    if (Math.random() < 0.3) {
+      const tieChip = available[Math.floor(Math.random() * Math.min(available.length, 2))];
+      practiceGuests.push({
+        seat, chipType, betType: '和',
+        chipDef: tieChip, chipCount: 1, betAmount: tieChip.value,
+        area: 'tie'
+      });
+    }
+
+    // 20% 加對子注
+    if (Math.random() < 0.2) {
+      const pairType = mainBetType === '莊' ? 'bpair' : 'ppair';
+      const pairChip = available[Math.floor(Math.random() * Math.min(available.length, 2))];
+      practiceGuests.push({
+        seat, chipType, betType: pairType,
+        chipDef: pairChip, chipCount: 1, betAmount: pairChip.value,
+        area: pairType
+      });
+    }
+
+    // 15% 加幸運六
+    if (Math.random() < 0.15) {
+      const luckyTypes = ['lucky6-2', 'lucky6-mix', 'lucky6-3'];
+      const lt = luckyTypes[Math.floor(Math.random() * luckyTypes.length)];
+      const luckyChip = available[0];
+      practiceGuests.push({
+        seat, chipType, betType: lt,
+        chipDef: luckyChip, chipCount: 1, betAmount: luckyChip.value,
+        area: lt
+      });
+    }
+  }
+
+  renderBettingTable();
+}
+
+// ── Render Betting Table ──
+function renderBettingTable() {
+  const seats = getActiveSeats();
+
+  // Seat indicators
+  const indRow = $('seatIndicators');
+  indRow.innerHTML = seats.map(s =>
+    `<div class="bt-seat-indicator active">${s}</div>`
+  ).join('') + '<div style="font-size:10px;color:rgba(255,255,255,0.3);margin-left:8px;">▲ 客人側 ▲</div>';
+
+  // Build seat cells for BANKER and PLAYER rows
+  for (const rowId of ['bankerSeats', 'playerSeats']) {
+    const area = rowId === 'bankerSeats' ? 'banker' : 'player';
+    const container = $(rowId);
+    container.innerHTML = '';
+    for (const s of seats) {
+      const cell = document.createElement('div');
+      cell.className = 'bt-seat-cell';
+      cell.innerHTML = `<span class="seat-num">${s}</span>`;
+      // Find bets for this seat + area
+      const bets = practiceGuests.filter(g => g.seat === s && g.area === area);
+      for (const b of bets) {
+        cell.innerHTML += renderChipHTML(b.chipDef, b.chipCount);
+      }
+      container.appendChild(cell);
+    }
+  }
+
+  // Side bets and lucky six
+  for (const area of ['ppair', 'bpair', 'tie', 'lucky6-2', 'lucky6-mix', 'lucky6-3']) {
+    const container = $(`chips-${area}`);
+    if (!container) continue;
+    container.innerHTML = '';
+    const bets = practiceGuests.filter(g => g.area === area);
+    for (const b of bets) {
+      container.innerHTML += `<span style="font-size:8px;color:#aaa;">${b.seat}:</span>` + renderChipHTML(b.chipDef, b.chipCount);
+    }
+  }
+}
+
+// ── Settlement Calculation ──
+function calcAllSettlements(result, pCards, bCards) {
+  const pPair = pCards.length >= 2 && pCards[0].rank === pCards[1].rank;
+  const bPair = bCards.length >= 2 && bCards[0].rank === bCards[1].rank;
+  const bTotal = calcPt(bCards);
+  const isLucky6 = (result === '莊' && bTotal === 6);
+  const lucky6cards = isLucky6 ? bCards.length : 0; // 2 or 3
+
+  for (const guest of practiceGuests) {
+    const bt = guest.betType;
+    const amt = guest.betAmount;
+
+    if (bt === '莊' || bt === '閒' || bt === '和') {
+      const rule = PAYOUTS[bt][result];
+      guest.correctAction = rule.action;
+      guest.correctAmount = rule.action === 'return' ? 0 : Math.floor(amt * rule.rate);
+    }
+    else if (bt === 'ppair') {
+      guest.correctAction = pPair ? 'pay' : 'collect';
+      guest.correctAmount = pPair ? amt * 11 : amt;
+    }
+    else if (bt === 'bpair') {
+      guest.correctAction = bPair ? 'pay' : 'collect';
+      guest.correctAmount = bPair ? amt * 11 : amt;
+    }
+    else if (bt === 'lucky6-2') {
+      if (isLucky6 && lucky6cards === 2) {
+        guest.correctAction = 'pay';
+        guest.correctAmount = amt * 22;
+      } else {
+        guest.correctAction = 'collect';
+        guest.correctAmount = amt;
+      }
+    }
+    else if (bt === 'lucky6-3') {
+      if (isLucky6 && lucky6cards === 3) {
+        guest.correctAction = 'pay';
+        guest.correctAmount = amt * 50;
+      } else {
+        guest.correctAction = 'collect';
+        guest.correctAmount = amt;
+      }
+    }
+    else if (bt === 'lucky6-mix') {
+      if (isLucky6 && lucky6cards === 2) {
+        guest.correctAction = 'pay';
+        guest.correctAmount = amt * 12;
+      } else if (isLucky6 && lucky6cards === 3) {
+        guest.correctAction = 'pay';
+        guest.correctAmount = amt * 20;
+      } else {
+        guest.correctAction = 'collect';
+        guest.correctAmount = amt;
+      }
+    }
+
+    guest.userAction = null;
+    guest.userAmount = null;
+    guest.isCorrect = null;
+  }
+}
+
+// ── Settlement Phase ──
+let activeSettleIdx = -1; // currently active row for chip input
+
+function setActiveSettleRow(idx) {
+  activeSettleIdx = idx;
+  const tbody = $('settlementBody');
+  tbody.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
+  if (idx >= 0) {
+    const row = tbody.querySelector(`tr[data-idx="${idx}"]`);
+    if (row) row.classList.add('active-row');
+  }
+}
+
+function updateAmountDisplay(idx) {
+  const g = practiceGuests[idx];
+  const span = $('settlementBody').querySelector(`.stl-amount[data-idx="${idx}"]`);
+  if (!span) return;
+  if (g.userAmount > 0) {
+    span.textContent = g.userAmount.toLocaleString();
+    span.classList.remove('empty');
+  } else {
+    span.textContent = '--';
+    span.classList.add('empty');
+  }
+}
+
+function enterSettlementPhase() {
+  const panel = $('settlementPanel');
+  panel.classList.add('show');
+  $('btnConfirmSettle').disabled = false;
+  activeSettleIdx = -1;
+  const tbody = $('settlementBody');
+  tbody.innerHTML = '';
+
+  const resultText = lastRoundState ? `${lastRoundState.result} (閒${lastRoundState.pPt}:莊${lastRoundState.bPt})` : '';
+  $('settlementResult').textContent = resultText;
+
+  practiceGuests.forEach((g, idx) => {
+    g.userAmount = 0;
+    const isReturn = g.correctAction === 'return';
+    const tr = document.createElement('tr');
+    tr.dataset.idx = idx;
+    if (isReturn) tr.className = 'return-row';
+
+    const betLabel = { '莊':'莊','閒':'閒','和':'和','ppair':'閒對','bpair':'莊對',
+      'lucky6-2':'幸運六(2張)','lucky6-mix':'混和幸運六','lucky6-3':'幸運六(3張)' }[g.betType] || g.betType;
+    const betClass = { '莊':'banker','閒':'player','和':'tie','ppair':'ppair','bpair':'bpair',
+      'lucky6-2':'lucky6','lucky6-mix':'lucky6','lucky6-3':'lucky6' }[g.betType] || '';
+
+    const chipTypeLabel = g.chipType === 'cash' ? '泥' : '活';
+    const chipHTML = renderChipHTML(g.chipDef, g.chipCount);
+
+    tr.innerHTML = `
+      <td>${g.seat}</td>
+      <td><span class="stl-bet-type ${betClass}">${betLabel}</span></td>
+      <td>${chipHTML}<span class="stl-bet-info">${chipTypeLabel}</span></td>
+      <td>${isReturn ? '<span style="color:#888">退回</span>' :
+        `<div class="stl-action-btns">
+          <button class="stl-btn" data-action="collect" data-idx="${idx}">收</button>
+          <button class="stl-btn" data-action="pay" data-idx="${idx}">賠</button>
+        </div>`}</td>
+      <td>${isReturn ? '--' :
+        `<span class="stl-amount empty" data-idx="${idx}">--</span>`}</td>
+      <td class="stl-result-cell"></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Bind action buttons
+  tbody.querySelectorAll('.stl-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx);
+      const action = btn.dataset.action;
+      const row = btn.closest('tr');
+      row.querySelectorAll('.stl-btn').forEach(b => b.classList.remove('selected-collect', 'selected-pay'));
+      btn.classList.add(action === 'collect' ? 'selected-collect' : 'selected-pay');
+      practiceGuests[idx].userAction = action;
+      practiceGuests[idx].userAmount = 0;
+      updateAmountDisplay(idx);
+      if (action === 'collect') {
+        // 收 = no amount needed, advance to next row
+        setActiveSettleRow(-1);
+        const nextRow = row.nextElementSibling;
+        if (nextRow && !nextRow.classList.contains('return-row')) {
+          const nextBtn = nextRow.querySelector('.stl-btn');
+          if (nextBtn) nextBtn.focus();
+        }
+      } else {
+        // 賠 = activate this row for chip input
+        setActiveSettleRow(idx);
+      }
+    });
+  });
+
+  // Focus first non-return button
+  const firstBtn = tbody.querySelector('tr:not(.return-row) .stl-btn');
+  if (firstBtn) firstBtn.focus();
+
+  log('請操作每位客人的收/賠，賠的金額用下方籌碼點擊輸入，按 Enter 確認');
+}
+
+function validateSettlement() {
+  let allFilled = true;
+  const tbody = $('settlementBody');
+
+  practiceGuests.forEach((g, idx) => {
+    if (g.correctAction === 'return') {
+      g.isCorrect = true;
+      return;
+    }
+
+    const row = tbody.querySelector(`tr[data-idx="${idx}"]`);
+    const resultCell = row.querySelector('.stl-result-cell');
+    if (!g.userAction) {
+      allFilled = false;
+      resultCell.innerHTML = '<span style="color:#ffd700">請選收/賠</span>';
+      return;
+    }
+
+    const actionOk = g.userAction === g.correctAction;
+    const amountOk = g.userAction === 'collect' ? true : (g.userAmount === g.correctAmount);
+    g.isCorrect = actionOk && amountOk;
+
+    practiceStats.totalOps++;
+    if (!g.isCorrect) practiceStats.errorCount++;
+
+    if (g.isCorrect) {
+      row.classList.add('correct');
+      resultCell.innerHTML = '<span style="color:#2e8b57;font-size:20px;">✓</span>';
+    } else {
+      row.classList.add('wrong');
+      const correctLabel = g.correctAction === 'collect' ? '收' : '賠';
+      const correctAmountStr = g.correctAction === 'collect' ? '' : ` ${g.correctAmount.toLocaleString()}`;
+      resultCell.innerHTML = `<span class="stl-wrong-answer">✗</span><br>
+        <span class="stl-correct-answer">正確: ${correctLabel}${correctAmountStr}</span>`;
+    }
+
+    // Disable buttons
+    row.querySelectorAll('.stl-btn').forEach(b => { b.disabled = true; b.style.pointerEvents = 'none'; });
+  });
+
+  updatePracticeStatsDisplay();
+
+  // Auto advance after 2s
+  activeSettleIdx = -1;
+  $('btnConfirmSettle').disabled = true;
+  setTimeout(() => {
+    $('settlementPanel').classList.remove('show');
+    dealPhase = 'done';
+    updateButtons();
+  }, 2500);
+}
+
+function skipSettlement() {
+  $('settlementPanel').classList.remove('show');
+  dealPhase = 'done';
+  updateButtons();
+}
+
+function updatePracticeStatsDisplay() {
+  const correct = practiceStats.totalOps - practiceStats.errorCount;
+  const pct = practiceStats.totalOps > 0 ? ((correct / practiceStats.totalOps) * 100).toFixed(1) : '--';
+  $('pctDisplay').textContent = `${pct}%`;
+  $('correctCount').textContent = correct;
+  $('totalOpsCount').textContent = practiceStats.totalOps;
+}
+
+function togglePracticeMode() {
+  practiceMode = !practiceMode;
+  const btn = $('btnPractice');
+  const controls = $('practiceControls');
+  const table = $('bettingTable');
+  const bacTable = document.querySelector('.bac-table');
+
+  if (practiceMode) {
+    btn.classList.add('practice-active');
+    controls.classList.add('show');
+    table.classList.add('show');
+    bacTable.classList.add('compact');
+    log('練習模式已開啟 — 每局結束後需操作收/賠');
+  } else {
+    btn.classList.remove('practice-active');
+    controls.classList.remove('show');
+    table.classList.remove('show');
+    bacTable.classList.remove('compact');
+    $('settlementPanel').classList.remove('show');
+    if (dealPhase === 'settlement') dealPhase = 'done';
+    log('練習模式已關閉');
+  }
+  updateButtons();
+}
+
+function resetPracticeStats() {
+  practiceStats = { totalOps: 0, errorCount: 0 };
+  updatePracticeStatsDisplay();
+}
+
+// ── Event Handlers ──
+$('btnRandom').addEventListener('click', () => {
+  const deck = buildRandomDeck();
+  shoeFileName = '';
+  initShoe(deck);
+  log(`已隨機生成 ${deck.length} 張牌（4紅4藍 × 52）`);
+});
+
+$('btnImport').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  log(`正在匯入 ${file.name}（不洗牌，照原序）...`);
+  try {
+    const deck = await importFromExcel(file);
+    if (deck && deck.length > 0) {
+      shoeFileName = file.name;
+      initShoe(deck);
+      log(`匯入成功：${file.name}（${deck.length} 張，照原序）`);
+    }
+  } catch (err) {
+    log(`匯入失敗：${err.message}`);
+  }
+  $('fileInput').value = '';
+});
+
+// ── Google Drive Import ──
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbypt3_PnEL5TgdDPaBwg1M5bWAjQMR9dD5Jslicn3eZCtuNSTtqO35RafhQpuX-l9_m/exec';
+
+$('btnDrive').addEventListener('click', async () => {
+  try {
+    log('正在從 Google Drive 載入檔案列表...');
+    const [folderRes, fileRes] = await Promise.all([
+      fetch(`${GOOGLE_APPS_SCRIPT_URL}?action=listFolders`).then(r => r.json()).catch(() => null),
+      fetch(GOOGLE_APPS_SCRIPT_URL).then(r => r.json())
+    ]);
+    if (!fileRes.success) throw new Error(fileRes.error || '載入失敗');
+
+    const folders = (folderRes && folderRes.success && folderRes.folders) ? folderRes.folders : [];
+    let files = fileRes.files || [];
+    if (!files.length && !folders.length) { log('Google Drive 中沒有檔案'); return; }
+
+    // Build dialog
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay show';
+    const box = document.createElement('div');
+    box.className = 'modal-box';
+    box.innerHTML = `
+      <h3>從 Google 雲端匯入</h3>
+      ${folders.length > 0 ? `
+      <label>資料夾
+        <select id="driveFolder" style="width:100%;padding:6px;margin-top:4px;background:#0a1628;color:#e0e0e0;border:1px solid #3a5a7a;border-radius:4px;">
+          <option value="">根目錄</option>
+          ${folders.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
+        </select>
+      </label>` : ''}
+      <label>檔案
+        <select id="driveFile" style="width:100%;padding:6px;margin-top:4px;background:#0a1628;color:#e0e0e0;border:1px solid #3a5a7a;border-radius:4px;">
+          ${files.map(f => {
+            const d = new Date(f.lastModified).toLocaleString('zh-TW');
+            return `<option value="${f.id}">${f.name} (${d})</option>`;
+          }).join('')}
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button class="btn" id="driveCancel">取消</button>
+        <button class="btn primary" id="driveOk">匯入</button>
+      </div>
+    `;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    const folderSel = box.querySelector('#driveFolder');
+    const fileSel = box.querySelector('#driveFile');
+
+    if (folderSel) {
+      folderSel.addEventListener('change', async () => {
+        fileSel.innerHTML = '<option>載入中...</option>';
+        try {
+          const fid = folderSel.value;
+          const url = fid ? `${GOOGLE_APPS_SCRIPT_URL}?folderId=${fid}` : GOOGLE_APPS_SCRIPT_URL;
+          const data = await (await fetch(url)).json();
+          files = (data.success && data.files) ? data.files : [];
+          fileSel.innerHTML = files.length === 0 ? '<option>沒有檔案</option>'
+            : files.map(f => {
+                const d = new Date(f.lastModified).toLocaleString('zh-TW');
+                return `<option value="${f.id}">${f.name} (${d})</option>`;
+              }).join('');
+        } catch { fileSel.innerHTML = '<option>載入失敗</option>'; }
+      });
+    }
+
+    box.querySelector('#driveCancel').onclick = () => overlay.remove();
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+    box.querySelector('#driveOk').onclick = async () => {
+      const fileId = fileSel.value;
+      if (!fileId) { alert('請選擇檔案'); return; }
+      const fileName = fileSel.options[fileSel.selectedIndex].textContent;
+      overlay.remove();
+
+      log(`正在下載: ${fileName}...`);
+      const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?fileId=${fileId}`);
+      const base64 = await resp.text();
+      const bin = atob(base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+      const file = new File([bytes.buffer], fileName, {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+
+      log('下載完成，正在匯入...');
+      const deck = await importFromExcel(file);
+      if (deck && deck.length > 0) {
+        shoeFileName = fileName.replace(/\s*\(.*\)$/, '');
+        initShoe(deck);
+        log(`雲端匯入成功：${shoeFileName}（${deck.length} 張，照原序）`);
+      }
+    };
+  } catch (err) {
+    log(`雲端匯入失敗：${err.message}`);
+  }
+});
+
+$('btnCut').addEventListener('click', () => $('cutModal').classList.add('show'));
+$('cutCancel').addEventListener('click', () => $('cutModal').classList.remove('show'));
+$('cutConfirm').addEventListener('click', () => {
+  const start = parseInt($('cutStartPos').value) || 1;
+  const end = parseInt($('cutEndPos').value) || 0;
+  const burn = $('cutBurn').checked;
+  $('cutModal').classList.remove('show');
+  doCut(start, end, burn);
+});
+
+$('btnDealOne').addEventListener('click', () => {
+  if (dealPhase === 'done') {
+    const endAt = cutEndPos > 0 ? cutEndPos : shoe.length;
+    if ((endAt - shoeIndex) < 4) { log('剩餘不足 4 張，本靴結束'); dealPhase = 'shoeEnd'; updateButtons(); return; }
+    initRound();
+  }
+  if (dealPhase === 'idle') initRound();
+  dealNext();
+  updateButtons();
+});
+
+$('btnDealRound').addEventListener('click', () => dealFullRound());
+$('btnRunAll').addEventListener('click', () => runAll());
+
+$('btnSwap').addEventListener('click', () => {
+  swapNextTwo = !swapNextTwo;
+  if (swapNextTwo) {
+    $('btnSwap').classList.add('swap-active');
+    const endAt = cutEndPos > 0 ? cutEndPos : shoe.length;
+    if (shoeIndex + 1 < endAt) {
+      const c1 = shoe[shoeIndex], c2 = shoe[shoeIndex + 1];
+      log(`跳張發已啟用：下次發牌將先發 ${c2.label()} 再發 ${c1.label()}`);
+    }
+  } else {
+    $('btnSwap').classList.remove('swap-active');
+    log('跳張發已取消');
+  }
+});
+
+$('btnReset').addEventListener('click', () => {
+  if (!shoe.length) return;
+  // Reset to beginning, don't reshuffle (keep original order)
+  const deck = shoe.slice();
+  initShoe(deck);
+  log('已重置到初始狀態（牌序不變）');
+});
+
+$('speedSlider').addEventListener('input', () => {
+  $('speedLabel').textContent = $('speedSlider').value;
+});
+
+// ── Practice Mode Events ──
+$('btnPractice').addEventListener('click', togglePracticeMode);
+$('btnResetStats').addEventListener('click', resetPracticeStats);
+$('btnConfirmSettle').addEventListener('click', validateSettlement);
+$('btnSkipSettle').addEventListener('click', skipSettlement);
+
+// Chip pad: click chip to add amount to active row
+$('chipPad').querySelectorAll('.chip-pad-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (activeSettleIdx < 0) return;
+    const g = practiceGuests[activeSettleIdx];
+    if (!g || g.userAction !== 'pay') return;
+    g.userAmount += parseInt(btn.dataset.val);
+    updateAmountDisplay(activeSettleIdx);
+  });
+});
+$('btnChipClear').addEventListener('click', () => {
+  if (activeSettleIdx < 0) return;
+  const g = practiceGuests[activeSettleIdx];
+  if (!g || g.userAction !== 'pay') return;
+  g.userAmount = 0;
+  updateAmountDisplay(activeSettleIdx);
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // In settlement: Enter = confirm, other keys blocked for dealing
+  if (dealPhase === 'settlement') {
+    if (e.key === 'Enter' && !e.target.classList.contains('stl-btn')) {
+      e.preventDefault();
+      const btn = $('btnConfirmSettle');
+      if (!btn.disabled) validateSettlement();
+    }
+    return;
+  }
+
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ') {
+    e.preventDefault();
+    if (!$('btnDealOne').disabled) $('btnDealOne').click();
+  }
+  if (e.key === 'r' || e.key === 'R') {
+    e.preventDefault();
+    if (!$('btnDealRound').disabled) $('btnDealRound').click();
+  }
+  if (e.key === 's' || e.key === 'S') {
+    e.preventDefault();
+    if (!$('btnSwap').disabled) $('btnSwap').click();
+  }
+});
+
+// Init
+updateButtons();
+</script>
+</body>
+</html>

@@ -9,7 +9,7 @@
     <script>
         (function(){
             var t = localStorage.getItem('at-theme');
-            if(t === 'light') document.documentElement.setAttribute('data-theme','light');
+            if(t !== 'dark') document.documentElement.setAttribute('data-theme','light');
         })();
     </script>
 
@@ -316,9 +316,18 @@ body::after {
     color: var(--red-alert); font-size: 18px; font-weight: 700;
     cursor: crosshair; transition: all .15s; font-family: var(--font-mono);
     text-shadow: var(--red-glow);
+    overflow: hidden; position: relative; z-index: 1;
 }
+#stopGenerateBtn { z-index: 2; }
+#clearSignalBtn { z-index: 2; }
+.signal-preset-btn { border-color: rgba(0,180,255,0.5) !important; background: rgba(0,180,255,0.1) !important; color: #0cf !important; text-shadow: 0 0 6px rgba(0,180,255,0.4) !important; font-size: 13px !important; font-weight: 700 !important; }
+.signal-preset-btn:hover { background: rgba(0,180,255,0.25) !important; box-shadow: 0 0 8px rgba(0,180,255,0.3) !important; }
+[data-theme="light"] .signal-preset-btn { border-color: rgba(0,100,180,0.5) !important; background: rgba(0,100,180,0.08) !important; color: #0068b4 !important; text-shadow: none !important; }
+[data-theme="light"] .signal-preset-btn:hover { background: rgba(0,100,180,0.18) !important; }
 .generate-stop-btn:hover { background: rgba(255,59,59,0.2); box-shadow: var(--red-glow); }
 .generate-stop-btn:disabled { opacity: .3; cursor: not-allowed; }
+.generate-stop-btn.clear-signal-btn { border-color: rgba(0,255,136,0.5); background: rgba(0,255,136,0.1); color: var(--phosphor); text-shadow: var(--phosphor-soft); font-size: 14px; }
+.generate-stop-btn.clear-signal-btn:hover { background: rgba(0,255,136,0.25); box-shadow: var(--phosphor-glow); }
 
 /* 回復分析輸入 */
 .recovery-check-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 6px; margin: 0 8px; }
@@ -496,10 +505,9 @@ body::after {
 
 .rounds-table tr.violation-row td { background: rgba(255,59,59,0.08) !important; border-bottom: 1px solid rgba(255,59,59,0.4); }
 .rounds-table tr.violation-row:hover td { background: rgba(255,59,59,0.14) !important; }
-.rounds-table tr.swap-banker-six-row td { background: rgba(0,255,136,0.06) !important; border-bottom: 1px solid rgba(0,255,136,0.2); }
-.rounds-table tr.swap-banker-six-row:hover td { background: rgba(0,255,136,0.1) !important; }
-.rounds-table tr.banker-six-win-row td { background: rgba(0,255,136,0.04) !important; border-bottom: 1px solid rgba(0,255,136,0.12); }
-.rounds-table tr.banker-six-win-row:hover td { background: rgba(0,255,136,0.08) !important; }
+.rounds-table td.swap-banker-six-result { color: #c06eff !important; text-shadow: 0 0 8px rgba(180,100,255,0.6); font-weight: 900 !important; font-size: 28px !important; }
+.rounds-table tr.banker-six-win-row td { background: rgba(0,255,136,0.18) !important; border-bottom: 2px solid rgba(0,255,136,0.5); }
+.rounds-table tr.banker-six-win-row:hover td { background: rgba(0,255,136,0.25) !important; }
 .rounds-table tr.card-count-mismatch td { background: rgba(0,212,255,0.07) !important; border-bottom: 1px solid rgba(0,212,255,0.25); }
 .rounds-table tr.card-count-mismatch:hover td { background: rgba(0,212,255,0.13) !important; }
 .rounds-table tr.card-color-violation-row td { background: rgba(255,170,0,0.07) !important; border-bottom: 1px solid rgba(255,170,0,0.3); }
@@ -546,6 +554,8 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
 .color-chip.blue { background: var(--cyan); box-shadow: 0 0 8px rgba(0,212,255,0.4); }
 .card-back-red  { background: rgba(255,59,59,0.18) !important; border-color: rgba(255,59,59,0.45) !important; }
 .card-back-blue { background: rgba(0,212,255,0.18) !important; border-color: rgba(0,212,255,0.45) !important; }
+.card-suit-spade { color: #b06aff !important; }
+[data-theme="light"] .card-suit-spade { color: #7b2fd6 !important; }
 
 /* ── 右側 ── */
 .right-sidebar { display: flex; flex-direction: column; gap: 12px; }
@@ -847,6 +857,8 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
 [data-theme="light"] .generate-stop-btn {
     cursor: pointer;
 }
+[data-theme="light"] .generate-stop-btn.clear-signal-btn { border-color: rgba(10,138,80,0.5); background: rgba(10,138,80,0.1); color: #0a8a50; text-shadow: none; }
+[data-theme="light"] .generate-stop-btn.clear-signal-btn:hover { background: rgba(10,138,80,0.2); }
 [data-theme="light"] .go-button {
     filter: none; cursor: pointer;
 }
@@ -980,7 +992,9 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
 
 /* 特殊行高亮 */
 [data-theme="light"] .rounds-table tr.violation-row td { background: rgba(217,41,41,0.13) !important; border-bottom: 2px solid rgba(217,41,41,0.45); color: #8b1a1a !important; }
-[data-theme="light"] .rounds-table tr.swap-banker-six-row td { background: rgba(10,138,80,0.06) !important; }
+[data-theme="light"] .rounds-table td.swap-banker-six-result { color: #8a2be2 !important; text-shadow: none; }
+[data-theme="light"] .rounds-table tr.banker-six-win-row td { background: rgba(10,138,80,0.18) !important; border-bottom: 2px solid rgba(10,138,80,0.4); }
+[data-theme="light"] .rounds-table tr.banker-six-win-row:hover td { background: rgba(10,138,80,0.25) !important; }
 [data-theme="light"] .rounds-table tr.card-count-mismatch td { background: rgba(0,120,184,0.06) !important; }
 [data-theme="light"] .rounds-table tr.violation-row:hover td { background: rgba(217,41,41,0.18) !important; }
 [data-theme="light"] .rounds-table tr.card-color-violation-row td { background: rgba(196,127,0,0.12) !important; border-bottom: 2px solid rgba(196,127,0,0.4); }
@@ -1047,11 +1061,19 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
                 <div id="signalConfigDisplay" class="signal-config-display"></div>
             </div>
 
+            <!-- 訊號牌快速設定 -->
+            <div style="display:flex; flex-direction:column; gap:3px;">
+                <button type="button" class="generate-stop-btn signal-preset-btn" onclick="setSignalPreset('allA2')" title="全花色 A 2">A2</button>
+                <button type="button" class="generate-stop-btn signal-preset-btn" onclick="setSignalPreset('hd0')" title="♥♦ 0點 (10JQK)">♥0</button>
+            </div>
+
             <!-- GO 按鈕 -->
             <div style="display:flex; flex-direction:column; gap:4px;">
                 <button class="generate-stop-btn" id="generateBtn">生成</button>
                 <button type="button" id="stopGenerateBtn" class="generate-stop-btn" disabled
                     onclick="stopGenerateShoe()">停止</button>
+                <button type="button" id="clearSignalBtn" class="generate-stop-btn clear-signal-btn"
+                    onclick="clearSignalConfig()">清除</button>
             </div>
 
             <!-- 回復分析檢查條件設定 -->
@@ -1079,6 +1101,15 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
                     <label class="recovery-input-label">7點逆轉上限</label>
                     <input type="number" id="max7PtReversal" class="recovery-input" min="0" value="2"
                         placeholder="空白=不檢查">
+                </div>
+                <div class="recovery-input-item">
+                    <label class="recovery-input-label">對調莊6局數</label>
+                    <input type="number" id="swapBanker6Target" class="recovery-input" min="0" value="10"
+                        placeholder="0=不設">
+                </div>
+                <div class="recovery-input-item" style="display:flex;align-items:center;gap:4px;">
+                    <input type="checkbox" id="skipBanker6">
+                    <label for="skipBanker6" class="recovery-input-label" style="white-space:nowrap;">避開莊6點贏</label>
                 </div>
             </div>
 
@@ -1112,6 +1143,14 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
                     <div class="sub-stat-row">
                         <span class="sub-stat-label">6張局:</span>
                         <span id="recoverySixCardRate">-- 局 (--%)</span>
+                    </div>
+                    <div class="sub-stat-row" style="margin-top:4px; border-top:1px solid rgba(0,255,136,0.15); padding-top:4px;">
+                        <span class="sub-stat-label" style="color:#b06aff;">對調莊6:</span>
+                        <span id="recoverySwapB6Count" style="color:#b06aff;">-- 局</span>
+                    </div>
+                    <div class="sub-stat-row">
+                        <span class="sub-stat-label" style="color:#b06aff; font-size:12px;">局號:</span>
+                        <span id="recoverySwapB6Rounds" style="color:#b06aff; font-size:12px; word-break:break-all;">--</span>
                     </div>
                 </div>
             </div>
@@ -1195,6 +1234,10 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
                     <div class="violation-label">其他違規</div>
                     <div class="violation-detail" id="otherViolationDetail">無</div>
                 </div>
+                <div class="violation-card" id="vRoundViolationCard">
+                    <div class="violation-label" style="color:#b06aff;">V局♠違規 <label style="font-size:11px;font-weight:normal;cursor:pointer;"><input type="checkbox" id="showVRoundViolation" style="vertical-align:middle;" onchange="if(typeof refreshViolationStats==='function')refreshViolationStats();"> 開</label></div>
+                    <div class="violation-detail" id="vRoundViolationDetail" style="color:#b06aff;display:none;">無</div>
+                </div>
             </div>
         </div>
 
@@ -1236,6 +1279,7 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
                 <input type="file" id="importFileInput" accept=".xlsx" style="display:none">
                 <button class="tool-btn" id="btnValidate">驗證</button>
                 <button class="tool-btn" id="btnSpeech">語音</button>
+                <button class="tool-btn" id="btnDealer">發牌</button>
                 <button class="tool-btn" id="btnApplyTools">計算</button>
                 <label class="swap-preview-toggle">
                     <input type="checkbox" id="toggleSwapPreview">
@@ -1305,6 +1349,38 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
             });
         });
 
+        // ========== 訊號牌快速設定 ==========
+        function setSignalPreset(preset) {
+            // 先清除所有選擇
+            if (typeof window.clearSignalSelections === 'function') {
+                window.clearSignalSelections();
+            }
+            let suits = [], ranks = [];
+            if (preset === 'allA2') {
+                suits = ['♠', '♥', '♦', '♣'];
+                ranks = ['A', '2'];
+            } else if (preset === 'hd0') {
+                suits = ['♥', '♦'];
+                ranks = ['10', 'J', 'Q', 'K'];
+            }
+            // 選花色
+            document.querySelectorAll('.suit-button').forEach(btn => {
+                if (suits.includes(btn.dataset.value)) btn.classList.add('selected');
+            });
+            // 選數字
+            document.querySelectorAll('.rank-button').forEach(btn => {
+                if (ranks.includes(btn.dataset.value)) {
+                    btn.classList.add('selected');
+                    const cb = document.querySelector(`.rank-checkbox[value="${btn.dataset.value}"]`);
+                    if (cb) cb.checked = true;
+                }
+            });
+            // 套用並更新顯示
+            if (typeof window.updateSignalCardCount === 'function') window.updateSignalCardCount();
+            if (typeof applySignalConfig === 'function') applySignalConfig();
+            else if (typeof window.applySignalConfig === 'function') window.applySignalConfig();
+        }
+
         // ========== 獲取選中的花色 ==========
         function getSelectedSuitsFromButtons() {
             const selectedButtons = document.querySelectorAll('.suit-button.selected');
@@ -1363,7 +1439,7 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
                 var isLight = html.getAttribute('data-theme') === 'light';
                 if(isLight){
                     html.removeAttribute('data-theme');
-                    localStorage.removeItem('at-theme');
+                    localStorage.setItem('at-theme','dark');
                 } else {
                     html.setAttribute('data-theme','light');
                     localStorage.setItem('at-theme','light');
@@ -1381,11 +1457,52 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
                 var isLight = html.getAttribute('data-theme') === 'light';
                 if(isLight){
                     html.removeAttribute('data-theme');
-                    localStorage.removeItem('at-theme');
+                    localStorage.setItem('at-theme','dark');
                 } else {
                     html.setAttribute('data-theme','light');
                     localStorage.setItem('at-theme','light');
                 }
+            });
+        })();
+    </script>
+
+    <!-- 設定持久化：儲存/讀取上次的設定 -->
+    <script>
+        (function(){
+            var STORAGE_KEY = 'at-settings';
+            var INPUT_IDS = ['avgRecoveryLimit','maxSideLimit','maxTieLimit','maxFourCardRate','max7PtReversal','swapBanker6Target'];
+            var CHECK_IDS = ['skipBanker6','showVRoundViolation'];
+
+            // 讀取上次設定
+            try {
+                var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+                INPUT_IDS.forEach(function(id){
+                    var el = document.getElementById(id);
+                    if (el && saved[id] !== undefined && saved[id] !== null) el.value = saved[id];
+                });
+                CHECK_IDS.forEach(function(id){
+                    var el = document.getElementById(id);
+                    if (el && saved[id] !== undefined) el.checked = !!saved[id];
+                });
+            } catch(e){}
+
+            // 任一設定變更時自動儲存
+            function saveAll(){
+                var obj = {};
+                INPUT_IDS.forEach(function(id){
+                    var el = document.getElementById(id);
+                    if (el) obj[id] = el.value;
+                });
+                CHECK_IDS.forEach(function(id){
+                    var el = document.getElementById(id);
+                    if (el) obj[id] = el.checked;
+                });
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); } catch(e){}
+            }
+            INPUT_IDS.concat(CHECK_IDS).forEach(function(id){
+                var el = document.getElementById(id);
+                if (el) el.addEventListener('change', saveAll);
+                if (el && el.type === 'number') el.addEventListener('input', saveAll);
             });
         })();
     </script>

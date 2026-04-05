@@ -15,12 +15,16 @@
     // ========== 設定 ==========
     const CONFIG = {
         maxRetries: 15,           // 最多嘗試幾輪修正
-        avgRecoveryLimit: 0,      // 平均回復上限（0=關閉）
+        avgRecoveryLimit: 4.5,    // 平均回復上限（0=關閉）
         autoUpdateInput: true     // 是否自動更新輸入框的值
     };
 
-    // ========== 初始化：修改平均上限預設值 ==========
+    // ========== 初始化：僅在無 localStorage 設定時套用預設值 ==========
     function initDefaultValues() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('at-settings') || '{}');
+            if (saved.avgRecoveryLimit !== undefined) return; // localStorage 已有值，不覆蓋
+        } catch(e){}
         const avgInput = document.getElementById('avgRecoveryLimit');
         if (avgInput && CONFIG.autoUpdateInput) {
             avgInput.value = CONFIG.avgRecoveryLimit;
@@ -157,6 +161,19 @@
                         shouldSwap = true;
                     }
 
+                    // 檢查對調後是否會產生莊6點贏
+                    if (shouldSwap && swapped) {
+                        const _b6El = document.getElementById('skipBanker6');
+                        if (_b6El && _b6El.checked && nextRound.cards && nextRound.cards.length >= 4) {
+                            const tmp = nextRound.cards.map(c => c.clone());
+                            [tmp[0], tmp[1]] = [tmp[1], tmp[0]];
+                            const hi = computeRoundHands(tmp);
+                            if (hi && hi.bankerTotal === 6 && hi.playerTotal <= 5) {
+                                console.log(`⚠️ 第 ${nextIdx + 1} 局對調後會產生莊6點贏，跳過`);
+                                shouldSwap = false;
+                            }
+                        }
+                    }
                     if (shouldSwap && swapped) {
                         console.log(`🔧 對調第 ${nextIdx + 1} 局前兩張 (${currentResult} → ${swapped})...`);
                         executeCardSwap(nextRound);

@@ -806,6 +806,14 @@ function clearSignalSelections() {
     updateSignalCardCount();
 }
 
+// 清除訊號牌設定（UI + 儲存的設定 + localStorage）
+function clearSignalConfig() {
+    clearSignalSelections();
+    persistSignalConfig({ suits: [], ranks: [] });
+    updateSignalConfigDisplay();
+    if (typeof log === 'function') log('訊號牌設定已清除', 'success');
+}
+
 
 // 將 UI 的選單狀態同步為目前儲存的訊號設定
 function syncUiFromSignalConfig() {
@@ -856,6 +864,9 @@ if (typeof window !== 'undefined') {
     }
     if (typeof window.clearSignalSelections !== 'function') {
         window.clearSignalSelections = clearSignalSelections;
+    }
+    if (typeof window.clearSignalConfig !== 'function') {
+        window.clearSignalConfig = clearSignalConfig;
     }
     if (typeof window.updateSignalConfigDisplay !== 'function') {
         window.updateSignalConfigDisplay = updateSignalConfigDisplay;
@@ -974,6 +985,39 @@ function pack_all_sensitive_and_segment(deck) {
         return (who7 === '閒' && round.result === '莊') || (who7 === '莊' && round.result === '閒');
     };
 
+    // 對調莊6局數目標：優先挑選對調後莊家6點贏的敏感局
+    const swapB6Input = document.getElementById('swapBanker6Target');
+    const swapB6Target = swapB6Input && swapB6Input.value !== '' ? parseInt(swapB6Input.value) : 0;
+    let swapB6Count = 0;
+
+    const isSwapBankerSix = (round) => {
+        if (!round || !Array.isArray(round.cards) || round.cards.length < 4) return false;
+        const swapped = round.cards.map(c => c.clone());
+        [swapped[0], swapped[1]] = [swapped[1], swapped[0]];
+        const info = computeRoundHands(swapped);
+        if (!info || typeof info.bankerTotal !== 'number' || typeof info.playerTotal !== 'number') return false;
+        return info.bankerTotal === 6 && info.playerTotal <= 5;
+    };
+
+    // 第一輪：優先挑選對調後莊家6點贏的敏感局
+    if (swapB6Target > 0) {
+        for (const r of all_sensitive) {
+            if (swapB6Count >= swapB6Target) break;
+            if (typeof shouldSkipSensitiveRound === 'function' && shouldSkipSensitiveRound(r)) continue;
+            if (r.cards.some(c => used_pos.has(c.pos))) continue;
+            if (r.cards.length === 4) continue; // 對調莊6不挑4張局
+            if (max7PtLimit !== null && is7PtReversal(r) && sevenPtReversalCount >= max7PtLimit) continue;
+            if (!isSwapBankerSix(r)) continue;
+            r.segment = 'A';
+            a_rounds.push(r);
+            r.cards.forEach(c => used_pos.add(c.pos));
+            if (r.cards.length === 4) fourCardCount++;
+            if (is7PtReversal(r)) sevenPtReversalCount++;
+            swapB6Count++;
+        }
+        log(`🔍 優先挑選對調莊6局：找到 ${swapB6Count}/${swapB6Target} 局`, swapB6Count >= swapB6Target ? 'success' : 'warn');
+    }
+
     // 先把所有敏感局加入 A 段（按原始順序，但 4 張局達上限就跳過）
     for (const r of all_sensitive) {
         if (typeof shouldSkipSensitiveRound === 'function' && shouldSkipSensitiveRound(r)) continue;
@@ -1026,6 +1070,7 @@ function pack_all_sensitive_and_segment(deck) {
                     orderedOriginalCards.forEach(card => used_pos.add(card.pos));
                     if (last.cards.length === 4) fourCardCount++;
                     if (is7PtReversal(finalRound)) sevenPtReversalCount++;
+                    if (isSwapBankerSix(finalRound)) swapB6Count++;
                     break;
                 }
             }
@@ -1034,12 +1079,22 @@ function pack_all_sensitive_and_segment(deck) {
         
         const cands = multi_pass_candidates_from_cards_simple(remaining);
         // 4 張局已達上限就跳過，七點逆轉已達上限也跳過
-        const picked = Array.isArray(cands)
-            ? cands.find(r => Array.isArray(r.cards) && r.cards.length > 0
+        const isValidCandidate = (r) => Array.isArray(r.cards) && r.cards.length > 0
                 && !r.cards.some(c => used_pos.has(c.pos))
                 && !(r.cards.length === 4 && fourCardCount >= maxFourCardRounds)
-                && !(max7PtLimit !== null && is7PtReversal(r) && sevenPtReversalCount >= max7PtLimit))
-            : cands;
+                && !(max7PtLimit !== null && is7PtReversal(r) && sevenPtReversalCount >= max7PtLimit);
+        // 優先挑選對調莊6的候選（如果目標未達成）
+        let picked = null;
+        if (Array.isArray(cands)) {
+            if (swapB6Target > 0 && swapB6Count < swapB6Target) {
+                picked = cands.find(r => isValidCandidate(r) && isSwapBankerSix(r) && r.cards.length > 4);
+            }
+            if (!picked) {
+                picked = cands.find(r => isValidCandidate(r));
+            }
+        } else {
+            picked = cands;
+        }
             
         // 檢查挑出來的敏感局是否合法
         if (!picked || !Array.isArray(picked.cards) || picked.cards.length === 0) {
@@ -1059,6 +1114,7 @@ function pack_all_sensitive_and_segment(deck) {
         picked.cards.forEach(c => used_pos.add(c.pos));
         if (picked.cards.length === 4) fourCardCount++;
         if (is7PtReversal(picked)) sevenPtReversalCount++;
+        if (isSwapBankerSix(picked)) swapB6Count++;
             added++;
     }
         if (added > 0) {
@@ -1071,6 +1127,9 @@ function pack_all_sensitive_and_segment(deck) {
     log(`🔍 多重洗牌結束：A段 ${a_rounds.length} 局，已用牌 ${used_pos.size} 張`, 'info');
     if (max7PtLimit !== null) {
         log(`🔍 七點逆轉：${sevenPtReversalCount} 局（上限=${max7PtLimit}）`, 'info');
+    }
+    if (swapB6Target > 0) {
+        log(`🔍 對調莊6：${swapB6Count}/${swapB6Target} 局`, swapB6Count >= swapB6Target ? 'success' : 'warn');
     }
       
     a_rounds.sort((a, b) => a.start_index - b.start_index);
@@ -1691,6 +1750,7 @@ const exported = {
         applySignalConfig: applySignalConfig,
         updateSignalCardCount: updateSignalCardCount,
         clearSignalSelections: clearSignalSelections,
+        clearSignalConfig: clearSignalConfig,
         runAutoColorSwap: runAutoColorSwapFromUI,
         syncUiFromSignalConfig: syncUiFromSignalConfig
     }
@@ -1891,6 +1951,10 @@ if (typeof window !== 'undefined') {
             });
             const speechBtn = document.getElementById('btnSpeech');
             if (speechBtn) speechBtn.addEventListener('click', openSpeechAssistant);
+            const dealerBtn = document.getElementById('btnDealer');
+            if (dealerBtn) dealerBtn.addEventListener('click', () => {
+                window.open('dealer.html', '_blank');
+            });
             const calcBtn = document.getElementById('btnApplyTools');
             if (calcBtn) calcBtn.addEventListener('click', showCalcTool);
             ensureFloatingWidget();
@@ -2258,7 +2322,24 @@ function updateRecoveryDisplay(result) {
     if (fourEl) fourEl.textContent = `${roundStats.fourCardCount} 局 (${fourPct}%)`;
     if (fiveEl) fiveEl.textContent = `${roundStats.fiveCardCount} 局 (${fivePct}%)`;
     if (sixEl) sixEl.textContent = `${roundStats.sixCardCount} 局 (${sixPct}%)`;
-    
+
+    // 對調莊6統計
+    const rounds = (typeof currentRounds !== 'undefined') ? currentRounds : [];
+    const swapB6List = [];
+    rounds.forEach((rd, ri) => {
+        if (!rd || !Array.isArray(rd.cards) || rd.cards.length < 4) return;
+        const tmp = rd.cards.map(c => c.clone());
+        [tmp[0], tmp[1]] = [tmp[1], tmp[0]];
+        const hi = computeRoundHands(tmp);
+        if (hi && hi.bankerTotal === 6 && hi.playerTotal <= 5) {
+            swapB6List.push(ri + 1);
+        }
+    });
+    const swapB6CountEl = document.getElementById('recoverySwapB6Count');
+    const swapB6RoundsEl = document.getElementById('recoverySwapB6Rounds');
+    if (swapB6CountEl) swapB6CountEl.textContent = `${swapB6List.length} 局`;
+    if (swapB6RoundsEl) swapB6RoundsEl.textContent = swapB6List.length > 0 ? swapB6List.join(', ') : '--';
+
     display.classList.remove('hidden');
 }
 
@@ -2571,6 +2652,9 @@ function renderRoundsTable(rounds, analysis) {
             } else {
                 classes.push('non-s-signal-card');
             }
+            if (card.suit === '♠') {
+                classes.push('card-suit-spade');
+            }
 
             return `<span class="${classes.join(' ')}" data-action="card" data-r="${index}" data-c="${cardIdx}">${card.short()}</span>`;
         }).join('');
@@ -2698,7 +2782,14 @@ function runViolationHighlightNow() {
         const isBankerSix = (typeof bankerSixIndexes !== 'undefined') && bankerSixIndexes.has(idx);
         const isCardColorViolation = (typeof cardColorViolationIndexes !== 'undefined') && cardColorViolationIndexes.has(idx);
         row.classList.toggle('violation-row', isViolation);
-        row.classList.toggle('swap-banker-six-row', isSwapBankerSix);
+        // 對調莊6：只亮結果欄的字，不亮整行
+        const resultCell = isSwapBankerSix ? row.querySelector('td.result-cell') : null;
+        if (resultCell) {
+            resultCell.classList.add('swap-banker-six-result');
+        } else if (!isSwapBankerSix) {
+            const prevResult = row.querySelector('td.swap-banker-six-result');
+            if (prevResult) prevResult.classList.remove('swap-banker-six-result');
+        }
         row.classList.toggle('banker-six-win-row', isBankerSix);
         row.classList.toggle('card-color-violation-row', isCardColorViolation);
     });
