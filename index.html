@@ -2175,6 +2175,9 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
                 <button class="tool-btn" id="btnSpeech">語音</button>
                 <button class="tool-btn" id="btnPointStats" onclick="window.open('point_stats.html','_blank')">點數統計</button>
                 <button class="tool-btn" id="btnManualInput" onclick="window.open('manual_input.html','_blank')">手動輸入</button>
+                <button class="tool-btn" id="btnSequenceGen" onclick="showSequenceInputDialog()">依序列生成</button>
+                <button class="tool-btn" id="btnRoadMap" onclick="showRoadMapDialog()">路單</button>
+                <button class="tool-btn" id="btnRoadInput" onclick="showRoadInputDialog()">路單編輯</button>
                 <button class="tool-btn" id="btnDealer">發牌</button>
                 <button class="tool-btn" id="btnApplyTools">計算</button>
                 <label class="swap-preview-toggle">
@@ -2343,6 +2346,9 @@ tr.highlighted-row { background: rgba(255,170,0,0.05) !important; }
     <script src="signals.js?v=12"></script>
     <script src="signals_ui.js?v=13"></script>
     <script src="smart_reorder_dialog.js"></script>
+    <script src="sequence_input_dialog.js"></script>
+    <script src="roadmap_dialog.js"></script>
+    <script src="road_input_dialog.js"></script>
     <script src="swap_preview.js"></script>
     <script src="traverse.js"></script>
     <script src="auto_fix_plugin.js?v=2"></script>

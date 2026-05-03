@@ -19,3 +19,6 @@ console-all.log
 *.xlsx
 *.bak_*
 __pycache__/
+
+# 子專案 / 不上 repo
+誘敵型/

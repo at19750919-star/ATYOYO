@@ -4287,6 +4287,22 @@ function updateViolationUI(stats) {
  * 在生成或編輯牌靴後自動更新違規統計
  */
 function refreshViolationStats() {
+    // 匯入模式 / 依序列生成 → 完全跳過違規顯示與高亮
+    if (typeof window !== 'undefined' && window.__importedShoeMode === true) {
+        if (typeof cardColorViolationIndexes !== 'undefined' && cardColorViolationIndexes instanceof Set) {
+            cardColorViolationIndexes.clear();
+        }
+        if (typeof violationRoundIndexes !== 'undefined' && violationRoundIndexes instanceof Set) {
+            violationRoundIndexes.clear();
+        }
+        if (typeof statsViolationRoundIndexes !== 'undefined' && statsViolationRoundIndexes instanceof Set) {
+            statsViolationRoundIndexes.clear();
+        }
+        updateViolationUI(null);
+        if (typeof applyViolationHighlights === 'function') applyViolationHighlights();
+        return;
+    }
+
     if (typeof currentRounds !== 'undefined' && currentRounds) {
         const stats = calculateViolationStats(currentRounds);
         // 計算無法對調違規
@@ -4537,6 +4553,224 @@ function computeRoundResult(cards) {
     else result = '和';
 
     return { result, pTotal, bTotal };
+}
+
+// ════════════════════════════════════════════════════════════════
+// 依序列生成牌靴（不檢查訊號牌/卡色/敏感局/連續莊閒等違規）
+// ════════════════════════════════════════════════════════════════
+
+// 依完整補牌規則模擬一局,回傳結果與實際使用張數
+function simulateBaccaratResult(cards) {
+    if (!cards || cards.length < 4) return null;
+    const pt = (c) => baccarat_cardPoint(c);
+
+    const p1 = pt(cards[0]);
+    const b1 = pt(cards[1]);
+    const p2 = pt(cards[2]);
+    const b2 = pt(cards[3]);
+    if ([p1, b1, p2, b2].some(v => v === null)) return null;
+
+    let pTotal = (p1 + p2) % 10;
+    let bTotal = (b1 + b2) % 10;
+    let used = 4;
+
+    const natural = (pTotal >= 8 || bTotal >= 8);
+    if (!natural) {
+        const playerDraws = baccarat_shouldPlayerDraw(pTotal);
+        let p3Card = null;
+        if (playerDraws) {
+            if (cards.length <= used) return null;
+            p3Card = cards[used];
+            const p3v = pt(p3Card);
+            if (p3v === null) return null;
+            pTotal = (pTotal + p3v) % 10;
+            used++;
+        }
+        const bankerDraws = baccarat_shouldBankerDraw(bTotal, p3Card);
+        if (bankerDraws) {
+            if (cards.length <= used) return null;
+            const b3v = pt(cards[used]);
+            if (b3v === null) return null;
+            bTotal = (bTotal + b3v) % 10;
+            used++;
+        }
+    }
+
+    const result = (pTotal === bTotal) ? '和' : (pTotal > bTotal ? '閒' : '莊');
+    return { result, used, bankerTotal: bTotal, playerTotal: pTotal };
+}
+
+/**
+ * 核心生成:依指定的 targetSeq 與 banker6Set 從 416 張牌庫抽牌
+ * targetSeq: array of 'B' / 'P' / 'T'
+ * banker6Set: Set of indices in targetSeq where banker should win with exactly 6 points
+ */
+function _generateShoeFromTargetSeq(targetSeq, banker6Set) {
+    const TOTAL_CARDS = 416;
+    if (!Array.isArray(targetSeq)) throw new Error('targetSeq 必須是陣列');
+    if (!(banker6Set instanceof Set)) banker6Set = new Set();
+
+    let deck = build_shuffled_deck();
+    if (deck.length !== TOTAL_CARDS) {
+        throw new Error(`牌庫初始化異常:${deck.length} 張`);
+    }
+    let posCounter = 0;
+    const rounds = [];
+    const MAX_PER_ROUND = 15000;
+    // 抽完後不可剩 1/2/3 張(無法成局)或 7 張(無法切成兩局合法)
+    const FORBIDDEN_LEFTOVER = new Set([1, 2, 3, 7]);
+
+    const tryDrawForTarget = (targetCh, needBanker6, mustNotBanker6) => {
+        for (let attempt = 0; attempt < MAX_PER_ROUND; attempt++) {
+            shuffle(deck);
+            const peekLen = Math.min(6, deck.length);
+            const sim = simulateBaccaratResult(deck.slice(0, peekLen));
+            if (!sim) continue;
+            if (sim.result !== targetCh) continue;
+            if (needBanker6 && sim.bankerTotal !== 6) continue;
+            if (mustNotBanker6 && targetCh === '莊' && sim.bankerTotal === 6) continue;
+            const postLen = deck.length - sim.used;
+            if (postLen > 0 && FORBIDDEN_LEFTOVER.has(postLen)) continue;
+            return sim;
+        }
+        return null;
+    };
+
+    let bpIdx = 0; // 走過了多少 targetSeq
+
+    // 第一階段:跟著 targetSeq 走
+    while (deck.length >= 4 && bpIdx < targetSeq.length) {
+        const target = targetSeq[bpIdx];
+        const targetCh = target === 'B' ? '莊' : target === 'P' ? '閒' : '和';
+        const needBanker6 = banker6Set.has(bpIdx);
+        const mustNotBanker6 = !needBanker6;
+
+        const sim = tryDrawForTarget(targetCh, needBanker6, mustNotBanker6);
+        if (!sim) break;
+
+        const usedCards = deck.splice(0, sim.used);
+        usedCards.forEach((c) => { c.pos = posCounter++; });
+        rounds.push({
+            start_index: usedCards[0].pos,
+            cards: usedCards,
+            result: targetCh,
+            sensitive: baccarat_isSensitiveRound(usedCards),
+            segment: 'A',
+        });
+        bpIdx++;
+    }
+
+    // 第二階段:序列跑完還有牌 → 繼續抽 B/P(不再產和局或莊6)直到牌庫見底
+    while (deck.length >= 4) {
+        const sim = tryDrawForTarget(null, false, false) || (function () {
+            // tryDrawForTarget 不接受 null target,改用 inline 抽法
+            for (let attempt = 0; attempt < MAX_PER_ROUND; attempt++) {
+                shuffle(deck);
+                const peekLen = Math.min(6, deck.length);
+                const s = simulateBaccaratResult(deck.slice(0, peekLen));
+                if (!s) continue;
+                if (s.result === '和') continue;
+                if (s.result === '莊' && s.bankerTotal === 6) continue;
+                const postLen = deck.length - s.used;
+                if (postLen > 0 && FORBIDDEN_LEFTOVER.has(postLen)) continue;
+                return s;
+            }
+            return null;
+        })();
+        if (!sim) break;
+
+        const usedCards = deck.splice(0, sim.used);
+        usedCards.forEach((c) => { c.pos = posCounter++; });
+        rounds.push({
+            start_index: usedCards[0].pos,
+            cards: usedCards,
+            result: sim.result,
+            sensitive: baccarat_isSensitiveRound(usedCards),
+            segment: 'A',
+        });
+    }
+
+    // 驗證:416 張必須用完
+    if (deck.length !== 0) {
+        throw new Error(`牌庫剩 ${deck.length} 張未消耗(已生成 ${rounds.length} 局),請重新生成`);
+    }
+
+    // 不夠的部分當作警告
+    const warnings = [];
+    if (bpIdx < targetSeq.length) {
+        warnings.push(`序列只填到第 ${bpIdx}/${targetSeq.length} 局`);
+    }
+    if (warnings.length > 0 && typeof log === 'function') {
+        log(`⚠️ ${warnings.join('、')}`, 'warn');
+    }
+
+    return rounds;
+}
+
+/**
+ * 公開 API 1:依 B/P 字串 + 和局數量 + 莊6 數量生成
+ * 和局位置與莊6 位置會隨機挑
+ */
+function generateShoeBySequence(seqStr, tieCount, banker6Count) {
+    seqStr = String(seqStr || '').toUpperCase().replace(/\s+/g, '');
+    if (!seqStr) throw new Error('序列不可為空');
+    if (!/^[BP]+$/.test(seqStr)) throw new Error('序列只能含 B 和 P');
+
+    tieCount = Math.max(0, parseInt(tieCount, 10) || 0);
+    banker6Count = Math.max(0, parseInt(banker6Count, 10) || 0);
+
+    const bpArr = seqStr.split('');
+    const bCountInSeq = bpArr.filter(c => c === 'B').length;
+    if (banker6Count > bCountInSeq) {
+        throw new Error(`莊6 數量(${banker6Count})不能超過序列中 B 的數量(${bCountInSeq})`);
+    }
+
+    // 把和局隨機插入中間位置
+    const targetSeq = bpArr.slice();
+    for (let i = 0; i < tieCount; i++) {
+        const lo = 1;
+        const hi = targetSeq.length;
+        const pos = lo + Math.floor(Math.random() * Math.max(1, hi - lo));
+        targetSeq.splice(pos, 0, 'T');
+    }
+
+    // 莊6 從 B 位置隨機挑
+    const banker6Set = new Set();
+    if (banker6Count > 0) {
+        const bIdx = [];
+        targetSeq.forEach((r, i) => { if (r === 'B') bIdx.push(i); });
+        for (let i = bIdx.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [bIdx[i], bIdx[j]] = [bIdx[j], bIdx[i]];
+        }
+        for (let i = 0; i < banker6Count; i++) banker6Set.add(bIdx[i]);
+    }
+
+    return _generateShoeFromTargetSeq(targetSeq, banker6Set);
+}
+
+/**
+ * 公開 API 2:依完整事件序列生成(每局類型固定)
+ * items: array of 'B' / 'P' / 'T' / 'B6'(B6 = 莊家 6 點贏)
+ */
+function generateShoeByItemList(items) {
+    if (!Array.isArray(items) || items.length === 0) {
+        throw new Error('事件序列不可為空');
+    }
+    const targetSeq = [];
+    const banker6Set = new Set();
+    items.forEach((item, i) => {
+        const u = String(item || '').toUpperCase();
+        if (u === 'B') targetSeq.push('B');
+        else if (u === 'B6' || u === '6') {
+            targetSeq.push('B');
+            banker6Set.add(i);
+        }
+        else if (u === 'P') targetSeq.push('P');
+        else if (u === 'T') targetSeq.push('T');
+        else throw new Error(`第 ${i + 1} 個項目格式錯誤:${item}`);
+    });
+    return _generateShoeFromTargetSeq(targetSeq, banker6Set);
 }
 
 /**
@@ -4875,15 +5109,16 @@ function recalculateRoundsAfterDistribution(rounds) {
 const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbypt3_PnEL5TgdDPaBwg1M5bWAjQMR9dD5Jslicn3eZCtuNSTtqO35RafhQpuX-l9_m/exec';
 
 /**
- * 產生下一個導出檔名：F01.xlsx, F02.xlsx, ...，編號存於 localStorage 自動遞增
+ * 產生下一個導出檔名：G02.xlsx, G03.xlsx, ...，編號存於 localStorage 自動遞增
  */
 function getNextExportFilename() {
-    const key = 'at-export-counter';
-    const last = parseInt(localStorage.getItem(key) || '0', 10);
-    const next = (Number.isFinite(last) && last >= 0 ? last : 0) + 1;
+    const key = 'at-export-counter-g';
+    // 第一次使用時從 1 開始 → 下一次 +1 = 2,所以首檔是 G02
+    const last = parseInt(localStorage.getItem(key) || '1', 10);
+    const next = (Number.isFinite(last) && last >= 1 ? last : 1) + 1;
     localStorage.setItem(key, String(next));
     const padded = next < 100 ? String(next).padStart(2, '0') : String(next);
-    return `F${padded}.xlsx`;
+    return `G${padded}.xlsx`;
 }
 
 /**
